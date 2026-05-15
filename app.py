@@ -35,6 +35,11 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     data["application_factory"] = af_block
     if SSH_PUBLIC_KEY and "ssh_authorized_keys" not in data:
         data["ssh_authorized_keys"] = [SSH_PUBLIC_KEY]
+    # Workaround: activate_by_schema_keys doesn't trigger automatically in
+    # cloud-init 26.1 with NoCloud datasource. Explicit runcmd ensures the
+    # module runs on first boot regardless.
+    if "runcmd" not in data:
+        data["runcmd"] = ["cloud-init single --frequency always --name application_factory"]
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 OS_BASELINES_FALLBACK = {

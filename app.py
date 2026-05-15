@@ -12,6 +12,7 @@ app = Flask(__name__)
 RECIPES_DIR = os.path.join(os.path.dirname(__file__), "recipes")
 AF_API_URL = os.environ.get("AF_API_URL", "http://localhost:8000/api/v1")
 AF_FRONTEND_URL = os.environ.get("AF_FRONTEND_URL", "https://frontendspace.duckdns.org")
+DEFAULT_BASE_DOMAIN = os.environ.get("DEFAULT_BASE_DOMAIN", "")
 
 def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     """Updates application_factory block: sets api_url, preserves existing token, adds app domains."""
@@ -151,7 +152,7 @@ def compose_fallback(data):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", default_base_domain=DEFAULT_BASE_DOMAIN)
 
 @app.route("/api/catalogue")
 def catalogue():

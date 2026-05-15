@@ -15,6 +15,7 @@ services:
     environment:
       - AF_API_URL=http://af-api:8000/api/v1
       - AF_FRONTEND_URL=${AF_FRONTEND_URL:-https://frontendspace.duckdns.org}
+      - DEFAULT_BASE_DOMAIN=${DEFAULT_BASE_DOMAIN}
       - IONOS_USERNAME=${IONOS_USERNAME}
       - IONOS_PASSWORD=${IONOS_PASSWORD}
       - IONOS_DATACENTER_ID=${IONOS_DATACENTER_ID}

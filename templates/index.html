@@ -856,7 +856,7 @@
     const state = {
       selected: [],            // [appId]
       values: {},              // { appId: { paramName: value } }
-      baseDomain: "",
+      baseDomain: "{{ default_base_domain }}",
       filter: "all",
       useForAll: { email: "", password: "" }
     };

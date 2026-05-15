@@ -273,59 +273,65 @@ def reinstall():
     srv = IONOS_SERVER_ID
 
     def generate():
-        # 1. Get current boot volume
-        yield "data: info|🔍 Getting current boot volume...\n\n"
-        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes", auth=auth)
-        items = r.json().get("items", [])
-        if not items:
-            yield "data: error|No volumes attached to server\n\n"
+        # 1. Read current NIC config to preserve the static IP
+        yield "data: info|🔍 Reading server NIC config...\n\n"
+        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics", auth=auth)
+        nics = r.json().get("items", [])
+        if not nics:
+            yield "data: error|No NICs found on server\n\n"
             return
-        old_vol_id = items[0]["id"]
-        yield f"data: ok|Found volume {old_vol_id[:8]}...\n\n"
+        nic0 = nics[0]["properties"]
+        nic_ips = nic0.get("ips", [])
+        nic_lan = nic0.get("lan", 1)
+        yield f"data: ok|IP to preserve: {nic_ips}\n\n"
 
-        # 2. Suspend server (CUBE servers use suspend/resume, not stop/start)
-        yield "data: info|⏸️  Suspending server...\n\n"
-        vm_check = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
-        vm_state = vm_check.json().get("properties", {}).get("vmState", "")
-        if vm_state == "SUSPENDED":
-            yield "data: ok|Server already suspended\n\n"
-        else:
-            r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/suspend", auth=auth)
-            if r.status_code not in (202, 204):
-                yield f"data: error|Suspend failed: {r.status_code} — {r.text[:120]}\n\n"
-                return
-            try:
-                yield from _wait_vm_state(auth, dc, srv, "SUSPENDED", "Waiting for suspend")
-            except StopIteration:
-                return
-            yield "data: ok|Server suspended\n\n"
-
-        # 3. Patch DAS volume with new image + cloud-init (DAS cannot be detached)
-        yield "data: info|💾 Reimaging volume with cloud-init...\n\n"
-        user_data = base64.b64encode(cloud_init.encode()).decode()
-        r = http.patch(f"{IONOS_API}/datacenters/{dc}/volumes/{old_vol_id}",
-                       auth=auth, json={"imageAlias": IONOS_IMAGE_ALIAS, "userData": user_data})
-        if r.status_code not in (200, 201, 202):
-            yield f"data: error|Volume patch failed: {r.status_code} — {r.text[:200]}\n\n"
+        # 2. Delete old server (keeps IP block, we'll reuse it)
+        yield "data: info|🗑️  Deleting existing server...\n\n"
+        r = http.delete(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
+        if r.status_code not in (202, 204):
+            yield f"data: error|Delete failed: {r.status_code} — {r.text[:120]}\n\n"
             return
         try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Reimaging", interval=5, retries=40)
+            yield from _wait_request(auth, r.headers.get("Location",""), "Deleting server", interval=5, retries=40)
         except StopIteration:
             return
-        yield "data: ok|Volume reimaged with cloud-init\n\n"
+        yield "data: ok|Server deleted\n\n"
 
-        # 7. Resume server (CUBE uses /resume, not /start)
-        yield "data: info|▶️  Resuming server...\n\n"
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/resume", auth=auth)
-        if r.status_code not in (202, 204):
-            yield f"data: error|Resume failed: {r.status_code}\n\n"
+        # 3. Create new server with same static IP + cloud-init
+        yield "data: info|🚀 Creating new server with cloud-init...\n\n"
+        user_data = base64.b64encode(cloud_init.encode()).decode()
+        body = {
+            "properties": {
+                "name": IONOS_SERVER_NAME,
+                "type": "CUBE",
+                "templateUuid": IONOS_SERVER_TEMPLATE_ID,
+                "availabilityZone": "AUTO"
+            },
+            "entities": {
+                "volumes": {"items": [{"properties": {
+                    "name": "boot", "type": "DAS",
+                    "imageAlias": IONOS_IMAGE_ALIAS,
+                    "userData": user_data,
+                    "licenceType": "LINUX"
+                }}]},
+                "nics": {"items": [{"properties": {
+                    "name": "nic1",
+                    "lan": nic_lan,
+                    "dhcp": False,
+                    "ips": nic_ips
+                }}]}
+            }
+        }
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers", auth=auth, json=body)
+        if r.status_code not in (200, 201, 202):
+            yield f"data: error|Create failed: {r.status_code} — {r.text[:200]}\n\n"
             return
         try:
-            yield from _wait_vm_state(auth, dc, srv, "RUNNING", "Waiting for boot")
+            yield from _wait_request(auth, r.headers.get("Location",""), "Provisioning", interval=6, retries=60)
         except StopIteration:
             return
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
-        yield "data: done|🎉 Reinstall complete! IP address preserved.\n\n"
+        yield f"data: done|🎉 Reinstall complete! IP {nic_ips[0] if nic_ips else 'preserved'}\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

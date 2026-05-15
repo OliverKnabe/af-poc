@@ -766,8 +766,8 @@
       <div class="card">
         <div class="card-body">
           <div class="tabs">
-            <div class="tab active">OS + Apps <span class="badge-new">NEW</span></div>
-            <div class="tab">Base OS</div>
+            <div class="tab active" id="tab-apps" onclick="switchTab('apps')">OS + Apps <span class="badge-new">NEW</span></div>
+            <div class="tab" id="tab-baseos" onclick="switchTab('baseos')">Base OS</div>
           </div>
 
           <div class="info-banner">
@@ -783,6 +783,7 @@
           <div id="apps-container">
             <div class="loading">Loading catalogue…</div>
           </div>
+          <div id="baseos-container" style="display:none;"></div>
 
           <div id="selection-footer"></div>
           <div id="warning-container"></div>
@@ -932,6 +933,59 @@
     function setFilter(id) {
       state.filter = id;
       render();
+    }
+
+    function switchTab(tab) {
+      document.getElementById("tab-apps").classList.toggle("active", tab === "apps");
+      document.getElementById("tab-baseos").classList.toggle("active", tab === "baseos");
+      document.getElementById("apps-container").style.display = tab === "apps" ? "" : "none";
+      document.getElementById("baseos-container").style.display = tab === "baseos" ? "" : "none";
+      document.getElementById("selection-footer").style.display = tab === "apps" ? "" : "none";
+      if (tab === "baseos") renderBaseOS();
+    }
+
+    function renderBaseOS() {
+      const el = document.getElementById("baseos-container");
+      const entries = Object.entries(OS_BASELINES);
+      if (!entries.length) { el.innerHTML = ""; return; }
+      const grid = document.createElement("div");
+      grid.className = "apps-grid";
+      grid.style.marginTop = "16px";
+      entries.forEach(([id, info]) => {
+        const label = id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const ram = info.os_min_ram_mb >= 1024 ? (info.os_min_ram_mb/1024)+"GB" : info.os_min_ram_mb+"MB";
+        const disk = info.os_min_disk_mb >= 1024 ? (info.os_min_disk_mb/1024)+"GB" : info.os_min_disk_mb+"MB";
+        const card = document.createElement("div");
+        card.className = "app-card disabled";
+        card.style.cursor = "default";
+        card.style.opacity = "0.85";
+        const icon = document.createElement("div");
+        icon.className = "app-card-icon";
+        icon.textContent = "🐧";
+        const name = document.createElement("div");
+        name.className = "app-card-name";
+        name.textContent = label;
+        const meta = document.createElement("div");
+        meta.className = "app-card-meta";
+        meta.style.marginTop = "8px";
+        const avail = document.createElement("span");
+        avail.className = "category-tag";
+        avail.style.background = "rgba(34,197,94,0.12)";
+        avail.style.color = "#16a34a";
+        avail.textContent = "available";
+        const sep = document.createElement("span");
+        sep.textContent = "·";
+        const ramSpan = document.createElement("span");
+        ramSpan.textContent = ram + " RAM";
+        const sep2 = document.createElement("span");
+        sep2.textContent = "·";
+        const diskSpan = document.createElement("span");
+        diskSpan.textContent = disk + " disk";
+        meta.append(avail, sep, ramSpan, sep2, diskSpan);
+        card.append(icon, name, meta);
+        grid.appendChild(card);
+      });
+      el.replaceChildren(grid);
     }
 
     function isIncompatible(appId) {

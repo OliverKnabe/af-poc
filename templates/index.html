@@ -821,6 +821,30 @@
         <div class="summary-row"><span class="muted">Disk</span><span id="sum-disk">5 GB</span></div>
       </div>
 
+      <div class="summary-section" style="margin-top:8px;">
+        <div class="summary-label">Credentials</div>
+        <div style="margin-top:8px;">
+          <label style="font-size:11px;color:var(--ionos-text-muted);display:block;margin-bottom:4px;">Root Password</label>
+          <input id="cred-root-pw" class="field-input" type="password"
+            placeholder="leave empty to auto-generate"
+            style="font-size:12px;padding:6px 10px;"
+            oninput="state.rootPassword=this.value">
+        </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:11px;color:var(--ionos-text-muted);display:block;margin-bottom:4px;">SSH Public Key</label>
+          {% if admin_ssh_key %}
+          <label style="font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;">
+            <input type="checkbox" id="cred-use-admin-key" checked onchange="state.useAdminKey=this.checked">
+            <span>Use admin key (<code style="font-size:10px;">{{ admin_key_label }}</code>)</span>
+          </label>
+          {% endif %}
+          <textarea id="cred-custom-key" class="field-input" rows="2"
+            placeholder="optional: paste customer SSH public key"
+            style="font-size:11px;padding:6px 10px;font-family:monospace;resize:vertical;"
+            oninput="state.customSshKey=this.value"></textarea>
+        </div>
+      </div>
+
       <div style="margin-top: 20px;">
         <button class="btn btn-primary" id="reinstall-btn" disabled>Deploy to Server</button>
       </div>
@@ -864,7 +888,10 @@
       values: {},              // { appId: { paramName: value } }
       baseDomain: "{{ default_base_domain }}",
       filter: "all",
-      useForAll: { email: "", password: "" }
+      useForAll: { email: "", password: "" },
+      rootPassword: "",
+      customSshKey: "",
+      useAdminKey: {{ 'true' if admin_ssh_key else 'false' }}
     };
 
     let CATEGORY_FILTERS = [{ id: "all", label: "All" }];
@@ -1228,7 +1255,13 @@
       const payload = {
         base_domain: state.baseDomain,
         base_os: "ubuntu-26.04",
-        credentials: { root_password: "demo-password-change-me" },
+        credentials: {
+          root_password: state.rootPassword || undefined,
+          ssh_public_key: [
+            state.useAdminKey ? "{{ admin_ssh_key | replace('\n','') }}" : null,
+            state.customSshKey.trim() || null
+          ].filter(Boolean).join("\n") || undefined
+        },
         applications: state.selected.map(id => ({
           id: id,
           parameters: state.values[id] || {}

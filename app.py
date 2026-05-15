@@ -154,7 +154,12 @@ def compose_fallback(data):
 
 @app.route("/")
 def index():
-    return render_template("index.html", default_base_domain=DEFAULT_BASE_DOMAIN, base_os_list=BASE_OS_LIST)
+    admin_key_label = (SSH_PUBLIC_KEY.split()[-1] if SSH_PUBLIC_KEY else "") or ""
+    return render_template("index.html",
+        default_base_domain=DEFAULT_BASE_DOMAIN,
+        base_os_list=BASE_OS_LIST,
+        admin_ssh_key=SSH_PUBLIC_KEY,
+        admin_key_label=admin_key_label)
 
 @app.route("/api/catalogue")
 def catalogue():

@@ -229,75 +229,111 @@ IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
 IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
 IONOS_IMAGE_ALIAS = os.environ.get("IONOS_IMAGE_ALIAS", "ubuntu:24.04")
 
+def _wait_request(auth, req_location, label, interval=4, retries=60):
+    """Polls request status; yields SSE lines. Returns True on DONE, False on FAILED/timeout."""
+    req_id = req_location.split("/requests/")[-1].rstrip("/status")
+    for _ in range(retries):
+        time.sleep(interval)
+        sr = http.get(f"{IONOS_API}/requests/{req_id}/status", auth=auth)
+        status = sr.json().get("metadata", {}).get("status", "UNKNOWN")
+        yield f"data: cmd|{label} ({status})\n\n"
+        if status == "DONE":
+            return
+        if status == "FAILED":
+            yield f"data: error|{label} — request FAILED\n\n"
+            raise StopIteration
+
 @app.route("/api/reinstall", methods=["POST"])
 def reinstall():
     data = request.get_json(force=True)
     cloud_init = data.get("cloud_init", "")
     auth = (IONOS_USERNAME, IONOS_PASSWORD)
+    dc = IONOS_DATACENTER_ID
+    srv = IONOS_SERVER_ID
 
     def generate():
-        # 1. Delete old server
-        yield "data: info|🗑️  Deleting existing server...\n\n"
-        r = http.delete(f"{IONOS_API}/datacenters/{IONOS_DATACENTER_ID}/servers/{IONOS_SERVER_ID}",
-                        auth=auth)
-        if r.status_code not in (202, 204):
-            yield f"data: error|Delete failed: {r.status_code} — {r.text[:120]}\n\n"
+        # 1. Get current boot volume
+        yield "data: info|🔍 Getting current boot volume...\n\n"
+        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes", auth=auth)
+        items = r.json().get("items", [])
+        if not items:
+            yield "data: error|No volumes attached to server\n\n"
             return
-        req_id = r.headers.get("Location", "").split("/requests/")[-1].rstrip("/status")
-        for _ in range(40):
-            time.sleep(3)
-            sr = http.get(f"{IONOS_API}/requests/{req_id}/status", auth=auth)
-            status = sr.json().get("metadata", {}).get("status", "UNKNOWN")
-            yield f"data: cmd|Waiting for deletion... ({status})\n\n"
-            if status == "DONE":
-                break
-            if status == "FAILED":
-                yield "data: error|Deletion failed\n\n"
-                return
-        yield "data: ok|Server deleted\n\n"
+        old_vol_id = items[0]["id"]
+        yield f"data: ok|Found volume {old_vol_id[:8]}...\n\n"
 
-        # 2. Create new server with cloud-init
-        yield "data: info|🚀 Creating new server with cloud-init...\n\n"
-        user_data = base64.b64encode(cloud_init.encode()).decode()
-        body = {
-            "properties": {
-                "name": IONOS_SERVER_NAME,
-                "type": "CUBE",
-                "templateUuid": IONOS_SERVER_TEMPLATE_ID,
-                "availabilityZone": "AUTO"
-            },
-            "entities": {
-                "volumes": {"items": [{"properties": {
-                    "name": "boot", "type": "DAS",
-                    "imageAlias": IONOS_IMAGE_ALIAS,
-                    "userData": user_data,
-                    "licenceType": "LINUX"
-                }}]},
-                "nics": {"items": [{"properties": {
-                    "name": "nic1", "lan": 1, "dhcp": True
-                }}]}
-            }
-        }
-        r = http.post(f"{IONOS_API}/datacenters/{IONOS_DATACENTER_ID}/servers",
-                      auth=auth, json=body)
-        if r.status_code not in (200, 201, 202):
-            yield f"data: error|Create failed: {r.status_code} — {r.text[:200]}\n\n"
+        # 2. Stop server
+        yield "data: info|⏹️  Stopping server...\n\n"
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/stop", auth=auth)
+        if r.status_code not in (202, 204):
+            yield f"data: error|Stop failed: {r.status_code}\n\n"
             return
-        req_id = r.headers.get("Location", "").split("/requests/")[-1].rstrip("/status")
-        new_id = r.json().get("id", "")[:8]
-        yield f"data: ok|Server created (id: {new_id}...)\n\n"
-        for _ in range(60):
-            time.sleep(5)
-            sr = http.get(f"{IONOS_API}/requests/{req_id}/status", auth=auth)
-            status = sr.json().get("metadata", {}).get("status", "UNKNOWN")
-            yield f"data: cmd|Provisioning... ({status})\n\n"
-            if status == "DONE":
-                break
-            if status == "FAILED":
-                yield "data: error|Provisioning failed\n\n"
-                return
+        try:
+            yield from _wait_request(auth, r.headers.get("Location",""), "Waiting for shutdown", interval=5, retries=30)
+        except StopIteration:
+            return
+        yield "data: ok|Server stopped\n\n"
+
+        # 3. Detach old volume
+        yield "data: info|🔌 Detaching old volume...\n\n"
+        r = http.delete(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes/{old_vol_id}", auth=auth)
+        if r.status_code not in (202, 204):
+            yield f"data: error|Detach failed: {r.status_code} — {r.text[:120]}\n\n"
+            return
+        try:
+            yield from _wait_request(auth, r.headers.get("Location",""), "Detaching", interval=3, retries=30)
+        except StopIteration:
+            return
+        yield "data: ok|Old volume detached\n\n"
+
+        # 4. Create new volume with cloud-init
+        yield "data: info|💾 Creating new volume with cloud-init...\n\n"
+        user_data = base64.b64encode(cloud_init.encode()).decode()
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/volumes", auth=auth, json={"properties": {
+            "name": "af-boot", "size": 200, "type": "SSD",
+            "imageAlias": IONOS_IMAGE_ALIAS,
+            "userData": user_data, "licenceType": "LINUX"
+        }})
+        if r.status_code not in (200, 201, 202):
+            yield f"data: error|Volume create failed: {r.status_code} — {r.text[:200]}\n\n"
+            return
+        new_vol_id = r.json().get("id", "")
+        try:
+            yield from _wait_request(auth, r.headers.get("Location",""), "Creating volume", interval=4, retries=30)
+        except StopIteration:
+            return
+        yield f"data: ok|New volume created ({new_vol_id[:8]}...)\n\n"
+
+        # 5. Attach new volume
+        yield "data: info|🔗 Attaching new volume...\n\n"
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes",
+                      auth=auth, json={"id": new_vol_id})
+        if r.status_code not in (200, 201, 202):
+            yield f"data: error|Attach failed: {r.status_code} — {r.text[:120]}\n\n"
+            return
+        try:
+            yield from _wait_request(auth, r.headers.get("Location",""), "Attaching volume", interval=4, retries=20)
+        except StopIteration:
+            return
+        yield "data: ok|Volume attached\n\n"
+
+        # 6. Set as boot volume
+        yield "data: info|🔑 Setting as boot volume...\n\n"
+        r = http.patch(f"{IONOS_API}/datacenters/{dc}/servers/{srv}",
+                       auth=auth, json={"bootVolume": {"id": new_vol_id}},
+                       headers={"Content-Type": "application/json"})
+        if r.status_code not in (200, 201, 202):
+            yield f"data: error|Set boot volume failed: {r.status_code}\n\n"
+            return
+
+        # 7. Start server
+        yield "data: info|🚀 Starting server...\n\n"
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/start", auth=auth)
+        if r.status_code not in (202, 204):
+            yield f"data: error|Start failed: {r.status_code}\n\n"
+            return
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
-        yield "data: done|🎉 Reinstall complete!\n\n"
+        yield "data: done|🎉 Reinstall complete! IP address preserved.\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

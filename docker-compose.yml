@@ -1,0 +1,29 @@
+services:
+  af-poc:
+    build: .
+    restart: unless-stopped
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    depends_on:
+      - af-poc
+
+networks:
+  internal:
+
+volumes:
+  caddy_data:
+  caddy_config:

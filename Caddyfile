@@ -1,0 +1,6 @@
+frontendspace.duckdns.org {
+    basicauth * {
+        admin $2b$14$ud2HrYpVFa9mVVRGBjkzF.fRyZi7fkVClKXmUox.lglaYD5o8HTR6
+    }
+    reverse_proxy af-poc:5050
+}

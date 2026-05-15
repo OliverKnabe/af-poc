@@ -300,57 +300,19 @@ def reinstall():
                 return
             yield "data: ok|Server suspended\n\n"
 
-        # 3. Detach old volume
-        yield "data: info|🔌 Detaching old volume...\n\n"
-        r = http.delete(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes/{old_vol_id}", auth=auth)
-        if r.status_code not in (202, 204):
-            yield f"data: error|Detach failed: {r.status_code} — {r.text[:120]}\n\n"
-            return
-        try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Detaching", interval=3, retries=30)
-        except StopIteration:
-            return
-        yield "data: ok|Old volume detached\n\n"
-
-        # 4. Create new volume with cloud-init
-        yield "data: info|💾 Creating new volume with cloud-init...\n\n"
+        # 3. Patch DAS volume with new image + cloud-init (DAS cannot be detached)
+        yield "data: info|💾 Reimaging volume with cloud-init...\n\n"
         user_data = base64.b64encode(cloud_init.encode()).decode()
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/volumes", auth=auth, json={"properties": {
-            "name": "af-boot", "size": 200, "type": "SSD",
-            "imageAlias": IONOS_IMAGE_ALIAS,
-            "userData": user_data, "licenceType": "LINUX"
-        }})
+        r = http.patch(f"{IONOS_API}/datacenters/{dc}/volumes/{old_vol_id}",
+                       auth=auth, json={"imageAlias": IONOS_IMAGE_ALIAS, "userData": user_data})
         if r.status_code not in (200, 201, 202):
-            yield f"data: error|Volume create failed: {r.status_code} — {r.text[:200]}\n\n"
-            return
-        new_vol_id = r.json().get("id", "")
-        try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Creating volume", interval=4, retries=30)
-        except StopIteration:
-            return
-        yield f"data: ok|New volume created ({new_vol_id[:8]}...)\n\n"
-
-        # 5. Attach new volume
-        yield "data: info|🔗 Attaching new volume...\n\n"
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/volumes",
-                      auth=auth, json={"id": new_vol_id})
-        if r.status_code not in (200, 201, 202):
-            yield f"data: error|Attach failed: {r.status_code} — {r.text[:120]}\n\n"
+            yield f"data: error|Volume patch failed: {r.status_code} — {r.text[:200]}\n\n"
             return
         try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Attaching volume", interval=4, retries=20)
+            yield from _wait_request(auth, r.headers.get("Location",""), "Reimaging", interval=5, retries=40)
         except StopIteration:
             return
-        yield "data: ok|Volume attached\n\n"
-
-        # 6. Set as boot volume
-        yield "data: info|🔑 Setting as boot volume...\n\n"
-        r = http.patch(f"{IONOS_API}/datacenters/{dc}/servers/{srv}",
-                       auth=auth, json={"bootVolume": {"id": new_vol_id}},
-                       headers={"Content-Type": "application/json"})
-        if r.status_code not in (200, 201, 202):
-            yield f"data: error|Set boot volume failed: {r.status_code}\n\n"
-            return
+        yield "data: ok|Volume reimaged with cloud-init\n\n"
 
         # 7. Resume server (CUBE uses /resume, not /start)
         yield "data: info|▶️  Resuming server...\n\n"

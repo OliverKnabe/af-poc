@@ -543,6 +543,26 @@
       color: var(--ionos-text-muted);
       margin-top: 4px;
     }
+    .domain-preview {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .domain-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .domain-preview-app {
+      color: var(--ionos-text-muted);
+      min-width: 80px;
+    }
+    .domain-preview-url {
+      color: var(--ionos-accent);
+      font-family: monospace;
+    }
     .field-checkbox {
       display: flex;
       align-items: center;
@@ -1043,8 +1063,9 @@
         <div class="field-group">
           <label class="field-label">Base Domain <span class="required">*</span></label>
           <input class="field-input" id="input-base-domain" value="${state.baseDomain || ''}"
-                 placeholder="h123456.stratoserver.net" oninput="state.baseDomain = this.value; updateInstallBtn();">
-          <div class="field-help">Root domain for all apps. Per-app subdomains are derived automatically (e.g. n8n.{domain}).</div>
+                 placeholder="h123456.stratoserver.net" oninput="state.baseDomain = this.value; updateInstallBtn(); updateDomainPreview();">
+          <div class="field-help">Per-app subdomains are derived automatically.</div>
+          <div id="domain-preview" class="domain-preview"></div>
         </div>
       `;
 
@@ -1210,39 +1231,74 @@
       const body = document.getElementById("result-modal-body");
       const footer = document.getElementById("result-modal-footer");
       document.getElementById("result-modal-title").textContent = "Deployment Ready";
+      body.replaceChildren();
+      footer.replaceChildren();
 
-      body.innerHTML = `
-        <div style="margin-bottom: 16px;">
-          <h3 style="font-size:14px; font-weight:600; margin-bottom:6px;">Generated cloud-init</h3>
-          <p style="font-size:12px; color:var(--ionos-text-muted); margin-bottom:10px;">
-            This YAML would be passed to the new server on first boot.
-          </p>
-          <div class="cloud-init-box" id="cloud-init-text">
-            <button class="copy-btn" onclick="copyCloudInit()">Copy</button>
-            <pre style="margin:0;">${escapeHtml(data.cloud_init)}</pre>
-          </div>
-        </div>
+      // --- App URLs section (prominent) ---
+      const routes = (data.network || {}).http_routes || [];
+      const routeTitle = document.createElement("h3");
+      routeTitle.style.cssText = "font-size:15px;font-weight:700;margin-bottom:10px;";
+      routeTitle.textContent = "Your Application URLs";
+      body.appendChild(routeTitle);
 
-        <div>
-          <h3 style="font-size:14px; font-weight:600; margin-bottom:6px;">Planned HTTP Routes</h3>
-          ${(data.network.http_routes || []).map(r => {
-            const app = APPS.find(a => a.id === r.application);
-            return `<div class="url-card">
-              <span class="url-card-app">${app ? app.display_name : r.application}</span>
-              <span class="url-card-url">${r.url}</span>
-            </div>`;
-          }).join("") || '<div class="field-help">No HTTP routes (native apps only).</div>'}
-        </div>
-      `;
+      if (routes.length) {
+        routes.forEach(r => {
+          const app = APPS.find(a => a.id === r.application);
+          const card = document.createElement("div");
+          card.className = "url-card";
+          const appSpan = document.createElement("span");
+          appSpan.className = "url-card-app";
+          appSpan.textContent = app ? app.display_name : r.application;
+          const urlSpan = document.createElement("span");
+          urlSpan.className = "url-card-url";
+          urlSpan.textContent = r.url;
+          card.appendChild(appSpan);
+          card.appendChild(urlSpan);
+          body.appendChild(card);
+        });
+      } else {
+        const none = document.createElement("div");
+        none.className = "field-help";
+        none.textContent = "No HTTP routes (native apps only).";
+        body.appendChild(none);
+      }
 
-      footer.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeModal('result-modal')">Close</button>
-        <button class="btn btn-primary" style="width:auto;" onclick="startReinstall()">Install on Server →</button>
-      `;
+      // --- Cloud-init collapsible ---
+      const details = document.createElement("details");
+      details.style.cssText = "margin-top:16px;";
+      const summary = document.createElement("summary");
+      summary.style.cssText = "font-size:12px;color:var(--ionos-text-muted);cursor:pointer;";
+      summary.textContent = "View generated cloud-init";
+      const ciBox = document.createElement("div");
+      ciBox.className = "cloud-init-box";
+      ciBox.style.marginTop = "8px";
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-btn";
+      copyBtn.textContent = "Copy";
+      copyBtn.onclick = copyCloudInit;
+      const pre = document.createElement("pre");
+      pre.style.margin = "0";
+      pre.textContent = data.cloud_init || "";
+      ciBox.appendChild(copyBtn);
+      ciBox.appendChild(pre);
+      details.appendChild(summary);
+      details.appendChild(ciBox);
+      body.appendChild(details);
 
-      // Store for simulation
+      // --- Footer ---
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "btn btn-secondary";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = () => closeModal("result-modal");
+      const installBtn = document.createElement("button");
+      installBtn.className = "btn btn-primary";
+      installBtn.style.width = "auto";
+      installBtn.textContent = "Install on Server →";
+      installBtn.onclick = startReinstall;
+      footer.appendChild(closeBtn);
+      footer.appendChild(installBtn);
+
       window._lastCompose = data;
-
       openModal("result-modal");
     }
 

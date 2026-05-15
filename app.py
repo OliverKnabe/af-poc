@@ -13,20 +13,26 @@ RECIPES_DIR = os.path.join(os.path.dirname(__file__), "recipes")
 AF_API_URL = os.environ.get("AF_API_URL", "http://localhost:8000/api/v1")
 AF_FRONTEND_URL = os.environ.get("AF_FRONTEND_URL", "https://frontendspace.duckdns.org")
 
-def _inject_af_block(cloud_init_str, fallback_token=""):
-    """Updates application_factory block: sets api_url, preserves existing token or uses fallback."""
+def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
+    """Updates application_factory block: sets api_url, preserves existing token, adds app domains."""
     yaml_body = "\n".join(l for l in cloud_init_str.splitlines() if not l.startswith("#cloud-config"))
     try:
         data = yaml.safe_load(yaml_body) or {}
     except Exception:
         data = {}
     existing_token = (data.get("application_factory") or {}).get("token", fallback_token)
-    data["application_factory"] = {
+    af_block = {
         "token": existing_token,
         "api_url": AF_FRONTEND_URL,
         "retry_attempts": 3,
         "retry_backoff_seconds": 1,
     }
+    if http_routes:
+        af_block["applications"] = [
+            {"id": r["application"], "domain": r["url"].replace("https://", "").replace("http://", "")}
+            for r in http_routes if r.get("url")
+        ]
+    data["application_factory"] = af_block
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 OS_BASELINES_FALLBACK = {

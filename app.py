@@ -325,8 +325,7 @@ def reinstall():
                 "nics": {"items": [{"properties": {
                     "name": "nic1",
                     "lan": nic_lan,
-                    "dhcp": False,
-                    "ips": nic_ips
+                    "dhcp": True
                 }}]}
             }
         }

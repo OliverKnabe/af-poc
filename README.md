@@ -4,6 +4,62 @@ Application Factory PoC — standalone demo without Coolify.
 
 Shows the full AF user journey: app selection → parameter config → cloud-init generation → server simulation.
 
+## Production Deployment (Docker + Caddy + real af-api)
+
+This fork is configured for a public demo deployment on a VPS with HTTPS, basic auth, and a real af-api backend.
+
+### Prerequisites
+
+- A VPS with Docker + Docker Compose installed
+- A DuckDNS (or other) domain pointing to the VPS IP
+- Access to the IONOS Harbor registry for the af-api image
+- IONOS Cloud credentials for server provisioning
+
+### Setup
+
+```bash
+git clone https://github.com/OliverKnabe/af-poc.git
+cd af-poc
+
+# Create .env with your credentials
+cat > .env << 'EOF'
+HARBOR_USER=robot$imagefactory+appfactory-pull
+HARBOR_PASS=<harbor-pull-token>
+AF_FRONTEND_URL=https://your-domain.duckdns.org
+DEFAULT_BASE_DOMAIN=your-domain.duckdns.org
+IONOS_USERNAME=<ionos-username>
+IONOS_PASSWORD=<ionos-password>
+IONOS_DATACENTER_ID=<datacenter-uuid>
+IONOS_SERVER_NAME=<server-name>
+IONOS_SERVER_TEMPLATE_ID=<cube-template-uuid>
+IONOS_IMAGE_ID=<ubuntu-26.04-af-image-uuid>
+DUCKDNS_TOKEN=<duckdns-token>
+DUCKDNS_DOMAIN=<subdomain>
+SSH_PUBLIC_KEY=<your-ssh-public-key>
+EOF
+
+# Log in to Harbor
+echo "$HARBOR_PASS" | docker login harbor.infra.cluster.ionos.com -u "$HARBOR_USER" --password-stdin
+
+# Start the stack
+docker compose up -d --build
+```
+
+The stack starts three containers:
+- **af-api** — real AF API with JWE token generation (internal only, not exposed)
+- **af-poc** — Flask frontend proxy
+- **Caddy** — HTTPS reverse proxy with Let's Encrypt + basic auth (admin / strato123)
+
+Open `https://your-domain.duckdns.org` — basic auth: `admin` / `strato123`.
+
+### Update
+
+```bash
+git pull && docker compose up -d --build
+```
+
+---
+
 ## Quick Start (standalone, no af-api needed)
 
 ```bash

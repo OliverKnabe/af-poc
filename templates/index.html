@@ -1060,13 +1060,6 @@
     function openConfigModal() {
       const body = document.getElementById("config-modal-body");
       let html = `
-        <div class="field-group">
-          <label class="field-label">Base Domain <span class="required">*</span></label>
-          <input class="field-input" id="input-base-domain" value="${state.baseDomain || ''}"
-                 placeholder="h123456.stratoserver.net" oninput="state.baseDomain = this.value; updateInstallBtn(); updateDomainPreview();">
-          <div class="field-help">Per-app subdomains are derived automatically.</div>
-          <div id="domain-preview" class="domain-preview"></div>
-        </div>
       `;
 
       // Shared "Use for all" for email/password
@@ -1151,10 +1144,6 @@
 
     function updateInstallBtn() {
       const btn = document.getElementById("install-btn");
-      if (!state.baseDomain || !state.baseDomain.trim()) {
-        btn.disabled = true;
-        return;
-      }
       // All required non-auto params must be filled (skip APP_DOMAIN)
       for (const id of state.selected) {
         const app = APPS.find(a => a.id === id);

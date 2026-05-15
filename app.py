@@ -158,6 +158,15 @@ def compose():
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()
+        base_domain = body.get("base_domain", "")
+        for route in data.get("network", {}).get("http_routes", []):
+            url = route.get("url", "")
+            app_id = route.get("application", "")
+            subdomain = app_id.replace("-", "")
+            expected = f"{subdomain}.{base_domain}"
+            if base_domain and subdomain and expected not in url:
+                scheme = "https://" if url.startswith("https") else "http://"
+                route["url"] = f"{scheme}{expected}"
         if "cloud_init" in data:
             data["cloud_init"] = _inject_af_block(data["cloud_init"], data.get("token", ""))
         return jsonify(data)

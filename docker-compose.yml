@@ -26,6 +26,7 @@ services:
       - IONOS_RESERVED_IP=${IONOS_RESERVED_IP}
       - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
       - DUCKDNS_DOMAIN=${DUCKDNS_DOMAIN}
+      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
     depends_on:
       af-api:
         condition: service_healthy

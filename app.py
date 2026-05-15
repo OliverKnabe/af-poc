@@ -33,6 +33,8 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
             for r in http_routes if r.get("url")
         ]
     data["application_factory"] = af_block
+    if SSH_PUBLIC_KEY and "ssh_authorized_keys" not in data:
+        data["ssh_authorized_keys"] = [SSH_PUBLIC_KEY]
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 OS_BASELINES_FALLBACK = {
@@ -249,6 +251,7 @@ IONOS_IMAGE_ID = os.environ.get("IONOS_IMAGE_ID", "")
 IONOS_RESERVED_IP = os.environ.get("IONOS_RESERVED_IP", "")
 DUCKDNS_TOKEN = os.environ.get("DUCKDNS_TOKEN", "")
 DUCKDNS_DOMAIN = os.environ.get("DUCKDNS_DOMAIN", "")
+SSH_PUBLIC_KEY = os.environ.get("SSH_PUBLIC_KEY", "")
 
 def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
     """Polls server vmState until it matches target_state."""

@@ -174,7 +174,9 @@ def catalogue():
 def compose():
     body = request.get_json(force=True)
     body.setdefault("base_os", "ubuntu-26.04")
-    body.setdefault("credentials", {"root_password": secrets.token_urlsafe(16)})
+    creds = body.setdefault("credentials", {})
+    if not creds.get("root_password"):
+        creds["root_password"] = secrets.token_urlsafe(16)
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

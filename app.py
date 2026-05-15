@@ -271,17 +271,17 @@ def reinstall():
         old_vol_id = items[0]["id"]
         yield f"data: ok|Found volume {old_vol_id[:8]}...\n\n"
 
-        # 2. Stop server
-        yield "data: info|⏹️  Stopping server...\n\n"
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/stop", auth=auth)
+        # 2. Suspend server (CUBE servers use suspend/resume, not stop/start)
+        yield "data: info|⏸️  Suspending server...\n\n"
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/suspend", auth=auth)
         if r.status_code not in (202, 204):
-            yield f"data: error|Stop failed: {r.status_code}\n\n"
+            yield f"data: error|Suspend failed: {r.status_code} — {r.text[:120]}\n\n"
             return
         try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Waiting for shutdown", interval=5, retries=30)
+            yield from _wait_request(auth, r.headers.get("Location",""), "Waiting for suspend", interval=5, retries=30)
         except StopIteration:
             return
-        yield "data: ok|Server stopped\n\n"
+        yield "data: ok|Server suspended\n\n"
 
         # 3. Detach old volume
         yield "data: info|🔌 Detaching old volume...\n\n"
@@ -335,11 +335,11 @@ def reinstall():
             yield f"data: error|Set boot volume failed: {r.status_code}\n\n"
             return
 
-        # 7. Start server
-        yield "data: info|🚀 Starting server...\n\n"
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/start", auth=auth)
+        # 7. Resume server (CUBE uses /resume, not /start)
+        yield "data: info|▶️  Resuming server...\n\n"
+        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/resume", auth=auth)
         if r.status_code not in (202, 204):
-            yield f"data: error|Start failed: {r.status_code}\n\n"
+            yield f"data: error|Resume failed: {r.status_code}\n\n"
             return
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
         yield "data: done|🎉 Reinstall complete! IP address preserved.\n\n"

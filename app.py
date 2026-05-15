@@ -140,12 +140,15 @@ def catalogue():
 @app.route("/api/compose", methods=["POST"])
 def compose():
     body = request.get_json(force=True)
-    # Auto-fill APP_DOMAIN for each app — real af-api requires it explicitly
     base_domain = body.get("base_domain", "")
+    # Auto-fill APP_DOMAIN for each app — real af-api requires it explicitly
     for app_item in body.get("applications", []):
         params = app_item.setdefault("parameters", {})
         if "APP_DOMAIN" not in params and base_domain:
             params["APP_DOMAIN"] = f"{app_item['id'].replace('-', '')}.{base_domain}"
+    # Inject required fields af-api expects if the frontend didn't supply them
+    body.setdefault("base_os", "ubuntu-26.04")
+    body.setdefault("credentials", {"root_password": secrets.token_urlsafe(16)})
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

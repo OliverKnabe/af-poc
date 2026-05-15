@@ -1314,7 +1314,14 @@
     async function startReinstall() {
       const body = document.getElementById("result-modal-body");
       const footer = document.getElementById("result-modal-footer");
-      document.getElementById("result-modal-title").textContent = "Installing on Server";
+
+      // Title with "not customer visible" badge
+      const titleEl = document.getElementById("result-modal-title");
+      titleEl.textContent = "Provisioning Server ";
+      const badge = document.createElement("span");
+      badge.style.cssText = "font-size:10px;font-weight:400;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:4px;vertical-align:middle;";
+      badge.textContent = "internal only";
+      titleEl.appendChild(badge);
 
       const termWrap = document.createElement("div");
       termWrap.className = "terminal";
@@ -1328,6 +1335,16 @@
       footer.replaceChildren(runningBtn);
 
       const cloud_init = window._lastCompose?.cloud_init || "";
+
+      // Show the cloud-init config that will be applied
+      termWrap.appendChild(_makeTerminalLine("info", "─── cloud-init user-data ───────────────────────"));
+      termWrap.appendChild(document.createTextNode("\n"));
+      cloud_init.split("\n").forEach(line => {
+        termWrap.appendChild(_makeTerminalLine("cmd", line));
+        termWrap.appendChild(document.createTextNode("\n"));
+      });
+      termWrap.appendChild(_makeTerminalLine("info", "────────────────────────────────────────────────"));
+      termWrap.appendChild(document.createTextNode("\n"));
 
       try {
         const res = await fetch("/api/reinstall", {
@@ -1353,11 +1370,38 @@
             termWrap.appendChild(document.createTextNode("\n"));
             termWrap.scrollTop = termWrap.scrollHeight;
             if (level === "done") {
-              const doneBtn = document.createElement("button");
-              doneBtn.className = "btn btn-primary";
-              doneBtn.textContent = "Done →";
-              doneBtn.onclick = () => showDeployedState();
-              footer.replaceChildren(doneBtn);
+              // Watch for bootstrap call from the new server
+              const bootstrapSince = Date.now() / 1000;
+              termWrap.appendChild(_makeTerminalLine("info", "⏳ Waiting for server to call bootstrap..."));
+              termWrap.appendChild(document.createTextNode("\n"));
+              termWrap.scrollTop = termWrap.scrollHeight;
+              const pollInterval = setInterval(async () => {
+                try {
+                  const pr = await fetch(`/api/bootstrap-poll?since=${bootstrapSince}`);
+                  const pd = await pr.json();
+                  if (pd.events && pd.events.length > 0) {
+                    clearInterval(pollInterval);
+                    const ev = pd.events[0];
+                    termWrap.appendChild(_makeTerminalLine("ok", `✅ Server called bootstrap (IP: ${ev.ip}, status: ${ev.status})`));
+                    termWrap.appendChild(document.createTextNode("\n"));
+                    termWrap.scrollTop = termWrap.scrollHeight;
+                    const doneBtn = document.createElement("button");
+                    doneBtn.className = "btn btn-primary";
+                    doneBtn.textContent = "Done →";
+                    doneBtn.onclick = () => showDeployedState();
+                    footer.replaceChildren(doneBtn);
+                  }
+                } catch(_) {}
+              }, 5000);
+              // Allow skipping after 5 min
+              setTimeout(() => {
+                clearInterval(pollInterval);
+                const doneBtn = document.createElement("button");
+                doneBtn.className = "btn btn-primary";
+                doneBtn.textContent = "Done →";
+                doneBtn.onclick = () => showDeployedState();
+                footer.replaceChildren(doneBtn);
+              }, 300000);
             }
             if (level === "error") {
               const closeBtn = document.createElement("button");

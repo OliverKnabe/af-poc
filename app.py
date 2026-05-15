@@ -186,14 +186,27 @@ def compose():
     except Exception:
         return compose_fallback(body)
 
+_bootstrap_events: list[dict] = []
+
 @app.route("/api/v1/bootstrap", methods=["POST"])
 def bootstrap():
+    global _bootstrap_events
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     body = request.get_json(force=True)
     try:
         r = http.post(f"{AF_API_URL}/bootstrap", json=body, timeout=30)
+        _bootstrap_events.append({"ts": time.time(), "ip": client_ip, "status": r.status_code})
+        _bootstrap_events = _bootstrap_events[-20:]
         return Response(r.content, status=r.status_code, content_type="application/json")
     except Exception as e:
+        _bootstrap_events.append({"ts": time.time(), "ip": client_ip, "status": "error"})
         return jsonify({"error": str(e)}), 502
+
+@app.route("/api/bootstrap-poll")
+def bootstrap_poll():
+    since = float(request.args.get("since", 0))
+    new = [e for e in _bootstrap_events if e["ts"] > since]
+    return jsonify({"events": new, "now": time.time()})
 
 @app.route("/api/health")
 def health():

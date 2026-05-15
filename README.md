@@ -133,6 +133,16 @@ Cloudflare prints a public HTTPS URL (e.g. `https://some-random-name.trycloudfla
 4. **cloud-init Generation** — POST /api/compose returns a ready-to-use cloud-init YAML
 5. **Server Simulation** — animated terminal output simulating the bootstrap process
 
+## Known Behaviours
+
+### TLS certificate not yet valid on first access
+
+After a server is provisioned and apps are deployed, Traefik requests a Let's Encrypt TLS certificate via TLS-ALPN-01 challenge on the **first HTTPS request**. Until the certificate is issued (typically within 30–90 seconds), the browser will show a **"Certificate Authority Invalid"** or **"Your connection is not private"** warning.
+
+**Solution:** wait ~1–2 minutes after the provisioning window shows "Install complete" before opening the application URLs.
+
+This only happens on first access after a fresh installation. Subsequent boots reuse the existing certificate stored in `/opt/traefik/letsencrypt/acme.json`.
+
 ## Installation Time Benchmarks
 
 Measured on a CUBE server (2 vCPU, 4 GB RAM) with `ubuntu-26.04-af` image, IONOS de/txl datacenter. Times are from "Deploy to Server" click to all application containers healthy.

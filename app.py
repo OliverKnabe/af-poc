@@ -28,29 +28,6 @@ def _inject_af_block(cloud_init_str, fallback_token=""):
     }
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
-def _autofill_params(applications, base_domain):
-    """Uses local recipe definitions to auto-generate required parameter values."""
-    recipes = load_recipes()
-    for app_item in applications:
-        recipe = recipes.get(app_item["id"], {})
-        params = app_item.setdefault("parameters", {})
-        for p in recipe.get("parameters", []):
-            pname = p["name"]
-            if pname in params:
-                continue
-            ptype = p.get("type", "string")
-            if pname in ("APP_DOMAIN", "app_domain") or ptype == "domain":
-                subdomain = app_item["id"].replace("-", "")
-                params[pname] = f"{subdomain}.{base_domain}" if base_domain else f"{subdomain}.example.com"
-            elif ptype == "email":
-                params[pname] = "admin@example.com"
-            elif p.get("auto_generate"):
-                params[pname] = secrets.token_urlsafe(24)
-            elif p.get("default") is not None:
-                params[pname] = p["default"]
-            else:
-                params[pname] = secrets.token_urlsafe(16)
-
 OS_BASELINES_FALLBACK = {
     "ubuntu-24.04": {"os_min_ram_mb": 512, "os_min_cpu_cores": 1, "os_min_disk_mb": 5120}
 }
@@ -169,10 +146,8 @@ def catalogue():
 @app.route("/api/compose", methods=["POST"])
 def compose():
     body = request.get_json(force=True)
-    base_domain = body.get("base_domain", "")
     body.setdefault("base_os", "ubuntu-26.04")
     body.setdefault("credentials", {"root_password": secrets.token_urlsafe(16)})
-    _autofill_params(body.get("applications", []), base_domain)
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

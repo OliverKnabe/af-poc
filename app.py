@@ -12,15 +12,16 @@ RECIPES_DIR = os.path.join(os.path.dirname(__file__), "recipes")
 AF_API_URL = os.environ.get("AF_API_URL", "http://localhost:8000/api/v1")
 AF_FRONTEND_URL = os.environ.get("AF_FRONTEND_URL", "https://frontendspace.duckdns.org")
 
-def _inject_af_block(cloud_init_str, token):
-    """Injects/replaces application_factory block in a cloud-init YAML string."""
+def _inject_af_block(cloud_init_str, fallback_token=""):
+    """Updates application_factory block: sets api_url, preserves existing token or uses fallback."""
     yaml_body = "\n".join(l for l in cloud_init_str.splitlines() if not l.startswith("#cloud-config"))
     try:
         data = yaml.safe_load(yaml_body) or {}
     except Exception:
         data = {}
+    existing_token = (data.get("application_factory") or {}).get("token", fallback_token)
     data["application_factory"] = {
-        "token": token,
+        "token": existing_token,
         "api_url": AF_FRONTEND_URL,
         "retry_attempts": 3,
         "retry_backoff_seconds": 1,
@@ -168,16 +169,8 @@ def catalogue():
 @app.route("/api/compose", methods=["POST"])
 def compose():
     body = request.get_json(force=True)
-    base_domain = body.get("base_domain", "")
-    # Auto-fill APP_DOMAIN for each app — real af-api requires it explicitly
-    for app_item in body.get("applications", []):
-        params = app_item.setdefault("parameters", {})
-        if "APP_DOMAIN" not in params and base_domain:
-            params["APP_DOMAIN"] = f"{app_item['id'].replace('-', '')}.{base_domain}"
-    # Inject required fields af-api expects if the frontend didn't supply them
     body.setdefault("base_os", "ubuntu-26.04")
     body.setdefault("credentials", {"root_password": secrets.token_urlsafe(16)})
-    _autofill_params(body.get("applications", []), base_domain)
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

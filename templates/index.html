@@ -293,6 +293,17 @@
       display: flex;
       gap: 8px;
     }
+    .category-tag {
+      display: inline-block;
+      background: rgba(0,82,204,0.10);
+      color: var(--ionos-accent);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
     .app-card-check {
       position: absolute;
       top: 10px;
@@ -936,6 +947,7 @@
             <div class="app-card-name">${app.display_name}</div>
             <div class="app-card-desc">${app.description}</div>
             <div class="app-card-meta">
+              ${(app.categories || []).map(c => `<span class="category-tag">${c}</span>`).join('')}
               <span>v${app.app_version}</span>
               <span>·</span>
               <span>${app.app_min_ram_mb >= 1024 ? (app.app_min_ram_mb/1024) + 'GB' : app.app_min_ram_mb + 'MB'}</span>

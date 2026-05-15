@@ -5,3 +5,4 @@ venv/
 .venv/
 *.egg-info/
 dist/
+jwe_private_key.pem

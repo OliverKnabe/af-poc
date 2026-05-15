@@ -3,7 +3,9 @@ services:
     image: harbor.infra.cluster.ionos.com/imagefactory/af-api:build-20260515143318
     restart: unless-stopped
     environment:
-      - DEV_MODE=true
+      - JWE_PRIVATE_KEY_FILE=/keys/jwe_private_key.pem
+    volumes:
+      - ./jwe_private_key.pem:/keys/jwe_private_key.pem:ro
     networks:
       - internal
 

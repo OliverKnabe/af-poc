@@ -237,6 +237,7 @@ IONOS_SERVER_ID = os.environ.get("IONOS_SERVER_ID", "")
 IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
 IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
 IONOS_IMAGE_ID = os.environ.get("IONOS_IMAGE_ID", "")
+IONOS_RESERVED_IP = os.environ.get("IONOS_RESERVED_IP", "")
 
 def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
     """Polls server vmState until it matches target_state."""
@@ -325,7 +326,8 @@ def reinstall():
                 "nics": {"items": [{"properties": {
                     "name": "nic1",
                     "lan": nic_lan,
-                    "dhcp": True
+                    "dhcp": not bool(IONOS_RESERVED_IP),
+                    **({"ips": [IONOS_RESERVED_IP]} if IONOS_RESERVED_IP else {})
                 }}]}
             }
         }
@@ -338,7 +340,8 @@ def reinstall():
         except StopIteration:
             return
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
-        yield f"data: done|🎉 Reinstall complete! IP {nic_ips[0] if nic_ips else 'preserved'}\n\n"
+        final_ip = IONOS_RESERVED_IP or (nic_ips[0] if nic_ips else "?")
+        yield f"data: done|🎉 Reinstall complete! IP: {final_ip}\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

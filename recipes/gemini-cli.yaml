@@ -2,27 +2,15 @@ name: gemini-cli
 display_name: Gemini CLI
 description: Command-line tool to interact with Google's Gemini models.
 categories:
-  - developer-tools
-  - ai
-app_version: "1.0.0"
-recipe_version: "1.0.0"
+- developer-tools
+- ai
+app_version: 1.0.0
+recipe_version: 1.0.0
 recipe_type: native
 upstream_url: https://github.com/google-gemini/gemini-cli
-
 app_min_ram_mb: 1024
 app_min_disk_mb: 5120
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports: []
-
-parameters:
-  - name: GEMINI_API_KEY
-    display_name: Gemini API Key
-    type: string
-    required: false
-    description: API key for Google Gemini models (obtain from https://aistudio.google.com/apikey). Can also authenticate via Google OAuth interactively.
-
-
 incompatible_with_apps: []

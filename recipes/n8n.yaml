@@ -2,49 +2,18 @@ name: n8n
 display_name: n8n
 description: Low-code workflow automation tool to connect various apps and APIs.
 categories:
-  - automation
-app_version: "1.94.1"
-recipe_version: "1.0.0"
+- automation
+app_version: 1.94.1
+recipe_version: 1.0.0
 recipe_type: docker-compose
 upstream_url: https://github.com/n8n-io/n8n
-
 app_min_ram_mb: 2048
 app_min_disk_mb: 20480
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports:
-  - port: 5678
-    protocol: tcp
-    public: true
-    description: n8n Web UI
-
-parameters:
-  - name: APP_DOMAIN
-    display_name: Domain
-    type: domain
-    required: true
-    description: Domain name for accessing n8n (e.g., n8n.example.com).
-
-  - name: N8N_ADMIN_EMAIL
-    display_name: Admin Email
-    type: email
-    required: true
-    description: Email address for the n8n admin account.
-
-  - name: POSTGRES_PASSWORD
-    display_name: Database Password
-    type: password
-    required: false
-    auto_generate: true
-    description: PostgreSQL database password (auto-generated if not provided).
-
-  - name: N8N_ENCRYPTION_KEY
-    display_name: Encryption Key
-    type: password
-    required: false
-    auto_generate: true
-    description: Key used to encrypt credentials stored in n8n (auto-generated if not provided).
-
+- port: 5678
+  protocol: tcp
+  public: true
+  description: n8n Web UI
 incompatible_with_apps: []

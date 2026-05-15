@@ -2,44 +2,22 @@ name: wg-easy
 display_name: WireGuard Easy
 description: Easiest way to run WireGuard VPN with a web UI for managing peers.
 categories:
-  - security
-app_version: "14"
-recipe_version: "1.0.0"
+- security
+app_version: '14'
+recipe_version: 1.0.0
 recipe_type: docker-compose
 upstream_url: https://github.com/wg-easy/wg-easy
-
 app_min_ram_mb: 256
 app_min_disk_mb: 2048
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports:
-  - port: 51820
-    protocol: udp
-    public: true
-    description: WireGuard VPN
-  - port: 51821
-    protocol: tcp
-    public: true
-    description: WireGuard Easy Web UI
-
-parameters:
-  - name: APP_DOMAIN
-    display_name: Domain
-    type: domain
-    required: true
-    description: Domain for accessing the WireGuard Easy web UI (e.g., vpn.example.com).
-  - name: WG_HOST
-    display_name: VPN Host
-    type: string
-    required: true
-    description: Public IP or hostname for WireGuard clients to connect to (e.g., vpn.example.com).
-  - name: ADMIN_PASSWORD
-    display_name: Admin Password
-    type: password
-    required: false
-    auto_generate: true
-    description: Password for the WireGuard Easy web UI (auto-generated if not provided).
-
+- port: 51820
+  protocol: udp
+  public: true
+  description: WireGuard VPN
+- port: 51821
+  protocol: tcp
+  public: true
+  description: WireGuard Easy Web UI
 incompatible_with_apps: []

@@ -1,63 +1,21 @@
 name: openclaw
 display_name: OpenClaw
-description: Self-hosted AI agent runtime that executes tasks via messaging apps like Telegram.
+description: Self-hosted AI agent runtime that executes tasks via messaging apps like
+  Telegram.
 categories:
-  - ai
-  - automation
-app_version: "2026.2.26"
-recipe_version: "1.0.0"
+- ai
+- automation
+app_version: 2026.2.26
+recipe_version: 1.0.0
 recipe_type: docker-compose
 upstream_url: https://github.com/openclaw/openclaw
-
 app_min_ram_mb: 2048
 app_min_disk_mb: 20480
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports:
-  - port: 18789
-    protocol: tcp
-    public: true
-    description: OpenClaw Gateway API and Web UI
-
-parameters:
-  - name: APP_DOMAIN
-    display_name: Domain
-    type: domain
-    required: true
-    description: Domain name for accessing OpenClaw (e.g., openclaw.example.com).
-
-  - name: OPENCLAW_GATEWAY_TOKEN
-    display_name: Gateway Token
-    type: password
-    required: false
-    auto_generate: true
-    description: Authentication token for the gateway API (auto-generated if not provided).
-
-  - name: ANTHROPIC_API_KEY
-    display_name: Anthropic API Key
-    type: string
-    required: false
-    description: API key for Claude models (set at least one model provider key).
-
-  - name: OPENAI_API_KEY
-    display_name: OpenAI API Key
-    type: string
-    required: false
-    description: API key for OpenAI models.
-
-  - name: GEMINI_API_KEY
-    display_name: Gemini API Key
-    type: string
-    required: false
-    description: API key for Google Gemini models.
-
-  - name: TELEGRAM_BOT_TOKEN
-    display_name: Telegram Bot Token
-    type: string
-    required: false
-    description: Telegram bot token for receiving messages (create via @BotFather).
-
-
+- port: 18789
+  protocol: tcp
+  public: true
+  description: OpenClaw Gateway API and Web UI
 incompatible_with_apps: []

@@ -1,65 +1,39 @@
 name: anytype-server
 display_name: AnyType Server
-description: Self-hosted sync server for AnyType — a privacy-focused note-taking and knowledge management app.
+description: Self-hosted sync server for AnyType — a privacy-focused note-taking and
+  knowledge management app.
 categories:
-  - productivity
-app_version: "0.4.0"
-recipe_version: "1.0.0"
+- productivity
+app_version: 0.4.0
+recipe_version: 1.0.0
 recipe_type: docker-compose
 upstream_url: https://github.com/anyproto/any-sync-dockercompose
-
 app_min_ram_mb: 2048
 app_min_disk_mb: 20480
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports:
-  - port: 4830
-    protocol: tcp
-    public: true
-    description: any-sync-coordinator
-  - port: 4730
-    protocol: tcp
-    public: true
-    description: any-sync-filenode
-  - port: 4630
-    protocol: tcp
-    public: true
-    description: any-sync-node
-  - port: 9000
-    protocol: tcp
-    public: false
-    description: MinIO S3 API
+- port: 4830
+  protocol: tcp
+  public: true
+  description: any-sync-coordinator
+- port: 4730
+  protocol: tcp
+  public: true
+  description: any-sync-filenode
+- port: 4630
+  protocol: tcp
+  public: true
+  description: any-sync-node
+- port: 9000
+  protocol: tcp
+  public: false
+  description: MinIO S3 API
+notes: 'After installation, configure your AnyType desktop/mobile app to use
 
-parameters:
-  - name: APP_DOMAIN
-    display_name: Domain
-    type: domain
-    required: true
-    description: Base domain for AnyType sync services (e.g., anytype.example.com).
-  - name: MONGO_PASSWORD
-    display_name: MongoDB Password
-    type: password
-    required: false
-    auto_generate: true
-    description: MongoDB password (auto-generated if not provided).
-  - name: MINIO_ACCESS_KEY
-    display_name: MinIO Access Key
-    type: password
-    required: false
-    auto_generate: true
-    description: MinIO access key (auto-generated if not provided).
-  - name: MINIO_SECRET_KEY
-    display_name: MinIO Secret Key
-    type: password
-    required: false
-    auto_generate: true
-    description: MinIO secret key (auto-generated if not provided).
-
-notes: |
-  After installation, configure your AnyType desktop/mobile app to use
   the self-hosted server at the coordinator address: ${APP_DOMAIN}:4830.
+
   All sync traffic is end-to-end encrypted.
 
+  '
 incompatible_with_apps: []

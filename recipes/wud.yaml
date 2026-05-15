@@ -1,30 +1,20 @@
 name: wud
 display_name: What's Up Docker
-description: Monitor Docker containers and get notified when new image versions are available.
+description: Monitor Docker containers and get notified when new image versions are
+  available.
 categories:
-  - monitoring
-app_version: "6.5.0"
-recipe_version: "1.0.0"
+- monitoring
+app_version: 6.5.0
+recipe_version: 1.0.0
 recipe_type: docker-compose
 upstream_url: https://github.com/fmartinou/whats-up-docker
-
 app_min_ram_mb: 256
 app_min_disk_mb: 2048
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports:
-  - port: 3000
-    protocol: tcp
-    public: true
-    description: WUD Web UI
-
-parameters:
-  - name: APP_DOMAIN
-    display_name: Domain
-    type: domain
-    required: true
-    description: Domain for accessing WUD (e.g., wud.example.com).
-
+- port: 3000
+  protocol: tcp
+  public: true
+  description: WUD Web UI
 incompatible_with_apps: []

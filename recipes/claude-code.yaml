@@ -2,27 +2,15 @@ name: claude-code
 display_name: Claude Code
 description: Agentic AI tool for terminal-based coding and automated command execution.
 categories:
-  - developer-tools
-  - ai
-app_version: "1.0.0"
-recipe_version: "1.0.0"
+- developer-tools
+- ai
+app_version: 1.0.0
+recipe_version: 1.0.0
 recipe_type: native
 upstream_url: https://github.com/anthropics/claude-code
-
 app_min_ram_mb: 2048
 app_min_disk_mb: 10240
-
 supported_os:
-  - ubuntu-26.04
-
+- ubuntu-26.04
 ports: []
-
-parameters:
-  - name: ANTHROPIC_API_KEY
-    display_name: Anthropic API Key
-    type: string
-    required: false
-    description: API key for Claude models. Can also be configured interactively after install via browser login.
-
-
 incompatible_with_apps: []

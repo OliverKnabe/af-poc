@@ -770,7 +770,7 @@
             <div class="tab" id="tab-baseos" onclick="switchTab('baseos')">Base OS</div>
           </div>
 
-          <div class="info-banner">
+          <div class="info-banner" id="apps-info-banner">
             <span class="icon">ℹ️</span>
             <div>
               <strong>Application Factory</strong> — Pick up to 5 ready-to-run applications that will be installed automatically on top of your chosen OS.
@@ -939,9 +939,12 @@
     function switchTab(tab) {
       document.getElementById("tab-apps").classList.toggle("active", tab === "apps");
       document.getElementById("tab-baseos").classList.toggle("active", tab === "baseos");
-      document.getElementById("apps-container").style.display = tab === "apps" ? "" : "none";
+      const appsOnly = tab === "apps" ? "" : "none";
+      document.getElementById("apps-container").style.display = appsOnly;
+      document.getElementById("apps-info-banner").style.display = appsOnly;
+      document.getElementById("filters").style.display = appsOnly;
       document.getElementById("baseos-container").style.display = tab === "baseos" ? "" : "none";
-      document.getElementById("selection-footer").style.display = tab === "apps" ? "" : "none";
+      document.getElementById("selection-footer").style.display = appsOnly;
       if (tab === "baseos") renderBaseOS();
     }
 

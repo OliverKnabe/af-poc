@@ -1,6 +1,13 @@
 frontendspace.duckdns.org {
-    basicauth * {
-        admin $2b$14$ud2HrYpVFa9mVVRGBjkzF.fRyZi7fkVClKXmUox.lglaYD5o8HTR6
+    # Bootstrap endpoint called by provisioned VMs — no auth required
+    handle /api/v1/bootstrap {
+        reverse_proxy af-poc:5050
     }
-    reverse_proxy af-poc:5050
+
+    handle {
+        basicauth * {
+            admin $2b$14$ud2HrYpVFa9mVVRGBjkzF.fRyZi7fkVClKXmUox.lglaYD5o8HTR6
+        }
+        reverse_proxy af-poc:5050
+    }
 }

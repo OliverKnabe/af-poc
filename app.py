@@ -173,6 +173,15 @@ def compose():
     except Exception:
         return compose_fallback(body)
 
+@app.route("/api/v1/bootstrap", methods=["POST"])
+def bootstrap():
+    body = request.get_json(force=True)
+    try:
+        r = http.post(f"{AF_API_URL}/bootstrap", json=body, timeout=30)
+        return Response(r.content, status=r.status_code, content_type="application/json")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
 @app.route("/api/health")
 def health():
     try:

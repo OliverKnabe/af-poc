@@ -35,6 +35,16 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     data["application_factory"] = af_block
     if SSH_PUBLIC_KEY and "ssh_authorized_keys" not in data:
         data["ssh_authorized_keys"] = [SSH_PUBLIC_KEY]
+    # Extend (not replace) cloud_final_modules so application_factory is appended
+    # to whatever the system/vendor config provides, regardless of cloud.cfg.d order.
+    data.setdefault("merge_how", [
+        {"name": "list", "settings": ["extend"]},
+        {"name": "dict", "settings": ["no_replace", "recurse_list"]},
+        {"name": "str", "settings": ["append"]},
+    ])
+    data.setdefault("cloud_final_modules", ["application_factory"])
+    if "application_factory" not in data["cloud_final_modules"]:
+        data["cloud_final_modules"].append("application_factory")
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 OS_BASELINES_FALLBACK = {

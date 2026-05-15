@@ -236,7 +236,7 @@ IONOS_DATACENTER_ID = os.environ.get("IONOS_DATACENTER_ID", "")
 IONOS_SERVER_ID = os.environ.get("IONOS_SERVER_ID", "")
 IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
 IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
-IONOS_IMAGE_ALIAS = os.environ.get("IONOS_IMAGE_ALIAS", "ubuntu:24.04")
+IONOS_IMAGE_ID = os.environ.get("IONOS_IMAGE_ID", "")
 
 def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
     """Polls server vmState until it matches target_state."""
@@ -270,9 +270,18 @@ def reinstall():
     cloud_init = data.get("cloud_init", "")
     auth = (IONOS_USERNAME, IONOS_PASSWORD)
     dc = IONOS_DATACENTER_ID
-    srv = IONOS_SERVER_ID
 
     def generate():
+        # 0. Look up server by name (ID changes after each recreation)
+        yield "data: info|🔍 Finding server by name...\n\n"
+        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers?depth=1", auth=auth)
+        servers = r.json().get("items", [])
+        srv = next((s["id"] for s in servers if s.get("properties", {}).get("name") == IONOS_SERVER_NAME), None)
+        if not srv:
+            yield f"data: error|Server '{IONOS_SERVER_NAME}' not found in datacenter\n\n"
+            return
+        yield f"data: ok|Found server {srv[:8]}...\n\n"
+
         # 1. Read current NIC config to preserve the static IP
         yield "data: info|🔍 Reading server NIC config...\n\n"
         r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics?depth=1", auth=auth)
@@ -310,9 +319,8 @@ def reinstall():
             "entities": {
                 "volumes": {"items": [{"properties": {
                     "name": "boot", "type": "DAS",
-                    "imageAlias": IONOS_IMAGE_ALIAS,
-                    "userData": user_data,
-                    "licenceType": "LINUX"
+                    "image": IONOS_IMAGE_ID,
+                    "userData": user_data
                 }}]},
                 "nics": {"items": [{"properties": {
                     "name": "nic1",

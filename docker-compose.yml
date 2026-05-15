@@ -20,6 +20,7 @@ services:
       - IONOS_SERVER_TEMPLATE_ID=${IONOS_SERVER_TEMPLATE_ID}
       - IONOS_SERVER_NAME=${IONOS_SERVER_NAME}
       - IONOS_IMAGE_ALIAS=${IONOS_IMAGE_ALIAS}
+      - IONOS_IMAGE_ID=${IONOS_IMAGE_ID}
     depends_on:
       af-api:
         condition: service_healthy

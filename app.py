@@ -238,6 +238,18 @@ IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
 IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
 IONOS_IMAGE_ALIAS = os.environ.get("IONOS_IMAGE_ALIAS", "ubuntu:24.04")
 
+def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
+    """Polls server vmState until it matches target_state."""
+    for _ in range(retries):
+        time.sleep(interval)
+        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
+        vm_state = r.json().get("properties", {}).get("vmState", "UNKNOWN")
+        yield f"data: cmd|{label} (vmState: {vm_state})\n\n"
+        if vm_state == target_state:
+            return
+    yield f"data: error|Timeout waiting for {target_state}\n\n"
+    raise StopIteration
+
 def _wait_request(auth, req_location, label, interval=4, retries=60):
     """Polls request status; yields SSE lines. Returns True on DONE, False on FAILED/timeout."""
     req_id = req_location.split("/requests/")[-1].rstrip("/status")
@@ -273,15 +285,20 @@ def reinstall():
 
         # 2. Suspend server (CUBE servers use suspend/resume, not stop/start)
         yield "data: info|⏸️  Suspending server...\n\n"
-        r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/suspend", auth=auth)
-        if r.status_code not in (202, 204):
-            yield f"data: error|Suspend failed: {r.status_code} — {r.text[:120]}\n\n"
-            return
-        try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Waiting for suspend", interval=5, retries=30)
-        except StopIteration:
-            return
-        yield "data: ok|Server suspended\n\n"
+        vm_check = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
+        vm_state = vm_check.json().get("properties", {}).get("vmState", "")
+        if vm_state == "SUSPENDED":
+            yield "data: ok|Server already suspended\n\n"
+        else:
+            r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/suspend", auth=auth)
+            if r.status_code not in (202, 204):
+                yield f"data: error|Suspend failed: {r.status_code} — {r.text[:120]}\n\n"
+                return
+            try:
+                yield from _wait_vm_state(auth, dc, srv, "SUSPENDED", "Waiting for suspend")
+            except StopIteration:
+                return
+            yield "data: ok|Server suspended\n\n"
 
         # 3. Detach old volume
         yield "data: info|🔌 Detaching old volume...\n\n"
@@ -340,6 +357,10 @@ def reinstall():
         r = http.post(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/resume", auth=auth)
         if r.status_code not in (202, 204):
             yield f"data: error|Resume failed: {r.status_code}\n\n"
+            return
+        try:
+            yield from _wait_vm_state(auth, dc, srv, "RUNNING", "Waiting for boot")
+        except StopIteration:
             return
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
         yield "data: done|🎉 Reinstall complete! IP address preserved.\n\n"

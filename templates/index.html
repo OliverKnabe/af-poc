@@ -841,13 +841,7 @@
       useForAll: { email: "", password: "" }
     };
 
-    const CATEGORY_FILTERS = [
-      { id: "all", label: "All" },
-      { id: "developer-tools", label: "Developer Tools" },
-      { id: "ai", label: "AI & Automation" },
-      { id: "infrastructure", label: "Infrastructure" },
-      { id: "automation", label: "Automation" }
-    ];
+    let CATEGORY_FILTERS = [{ id: "all", label: "All" }];
 
     const SIMPLE_ICONS = {
       "n8n":           "n8n",
@@ -883,6 +877,11 @@
         const data = await res.json();
         APPS = data.applications;
         OS_BASELINES = data.os_baselines;
+        const seen = new Set();
+        CATEGORY_FILTERS = [{ id: "all", label: "All" }];
+        APPS.forEach(a => (a.categories || []).forEach(c => {
+          if (!seen.has(c)) { seen.add(c); CATEGORY_FILTERS.push({ id: c, label: c.charAt(0).toUpperCase() + c.slice(1) }); }
+        }));
         render();
       } catch (e) {
         document.getElementById("apps-container").innerHTML =

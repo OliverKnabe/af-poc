@@ -1,6 +1,6 @@
 services:
   af-api:
-    image: harbor.infra.cluster.ionos.com/imagefactory/af-api
+    image: harbor.infra.cluster.ionos.com/imagefactory/af-api:build-20260515143318
     restart: unless-stopped
     environment:
       - DEV_MODE=true

@@ -855,6 +855,7 @@
   </div>
 
   <script>
+    const BASE_OS_IDS = "{{ base_os_list }}".split(",").map(s => s.trim()).filter(Boolean);
     // ---- State ----
     let APPS = [];
     let OS_BASELINES = {};
@@ -944,27 +945,32 @@
       if (tab === "baseos") renderBaseOS();
     }
 
+    const OS_ICONS = { ubuntu: "🐧", debian: "🌀", alma: "🔴", rocky: "🪨", default: "💻" };
+    const OS_LABELS = {
+      "ubuntu-22.04": "Ubuntu 22.04 LTS", "ubuntu-24.04": "Ubuntu 24.04 LTS",
+      "ubuntu-26.04": "Ubuntu 26.04 LTS", "debian-12": "Debian 12 Bookworm",
+      "debian-13": "Debian 13 Trixie", "alma-9": "AlmaLinux 9", "rocky-9": "Rocky Linux 9"
+    };
+
     function renderBaseOS() {
       const el = document.getElementById("baseos-container");
-      const entries = Object.entries(OS_BASELINES);
-      if (!entries.length) { el.innerHTML = ""; return; }
+      if (!BASE_OS_IDS.length) { el.replaceChildren(); return; }
       const grid = document.createElement("div");
       grid.className = "apps-grid";
       grid.style.marginTop = "16px";
-      entries.forEach(([id, info]) => {
-        const label = id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-        const ram = info.os_min_ram_mb >= 1024 ? (info.os_min_ram_mb/1024)+"GB" : info.os_min_ram_mb+"MB";
-        const disk = info.os_min_disk_mb >= 1024 ? (info.os_min_disk_mb/1024)+"GB" : info.os_min_disk_mb+"MB";
+      BASE_OS_IDS.forEach(id => {
+        const label = OS_LABELS[id] || id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const family = id.split("-")[0];
+        const icon = OS_ICONS[family] || OS_ICONS.default;
         const card = document.createElement("div");
         card.className = "app-card disabled";
         card.style.cursor = "default";
-        card.style.opacity = "0.85";
-        const icon = document.createElement("div");
-        icon.className = "app-card-icon";
-        icon.textContent = "🐧";
-        const name = document.createElement("div");
-        name.className = "app-card-name";
-        name.textContent = label;
+        const iconEl = document.createElement("div");
+        iconEl.className = "app-card-icon";
+        iconEl.textContent = icon;
+        const nameEl = document.createElement("div");
+        nameEl.className = "app-card-name";
+        nameEl.textContent = label;
         const meta = document.createElement("div");
         meta.className = "app-card-meta";
         meta.style.marginTop = "8px";
@@ -973,16 +979,8 @@
         avail.style.background = "rgba(34,197,94,0.12)";
         avail.style.color = "#16a34a";
         avail.textContent = "available";
-        const sep = document.createElement("span");
-        sep.textContent = "·";
-        const ramSpan = document.createElement("span");
-        ramSpan.textContent = ram + " RAM";
-        const sep2 = document.createElement("span");
-        sep2.textContent = "·";
-        const diskSpan = document.createElement("span");
-        diskSpan.textContent = disk + " disk";
-        meta.append(avail, sep, ramSpan, sep2, diskSpan);
-        card.append(icon, name, meta);
+        meta.appendChild(avail);
+        card.append(iconEl, nameEl, meta);
         grid.appendChild(card);
       });
       el.replaceChildren(grid);

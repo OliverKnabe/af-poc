@@ -2,24 +2,43 @@ name: ollama
 display_name: Ollama
 description: Tool to run large language models (LLMs) locally on your hardware.
 categories:
-- ai
-app_version: 0.7.1
-recipe_version: 1.0.0
+  - ai
+app_version: "0.7.1"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/ollama/ollama
+
 app_min_ram_mb: 8192
 app_min_disk_mb: 51200
-supported_os:
-- ubuntu-26.04
-ports:
-- port: 11434
-  protocol: tcp
-  public: true
-  description: Ollama API
-notes: 'Ollama performs significantly better with GPU acceleration. On CPU-only VPS
-  instances, inference will be slow. Recommended for BMC (bare-metal cloud) servers
-  with GPU passthrough. CPU-only deployments are functional but should be limited
-  to small models (≤3B parameters).
 
-  '
+supported_os:
+  - ubuntu-26.04
+
+ports:
+  - port: 11434
+    protocol: tcp
+    public: true
+    description: Ollama API
+
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain name for accessing the Ollama API (e.g., ollama.example.com).
+
+  - name: OLLAMA_DEFAULT_MODEL
+    display_name: Default Model
+    type: string
+    required: false
+    default: "llama3.2"
+    description: Model to pull on first start (e.g., llama3.2, mistral, gemma2).
+
+
+notes: >
+  Ollama performs significantly better with GPU acceleration. On CPU-only VPS
+  instances, inference will be slow. Recommended for BMC (bare-metal cloud)
+  servers with GPU passthrough. CPU-only deployments are functional but should
+  be limited to small models (≤3B parameters).
+
 incompatible_with_apps: []

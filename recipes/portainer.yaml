@@ -2,22 +2,34 @@ name: portainer
 display_name: Portainer
 description: GUI for managing Docker environments easily.
 categories:
-- infrastructure
-app_version: 2.25.1
-recipe_version: 1.0.0
+  - infrastructure
+app_version: "2.25.1"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/portainer/portainer
+
 app_min_ram_mb: 512
 app_min_disk_mb: 10240
+
 supported_os:
-- ubuntu-26.04
+  - ubuntu-26.04
+
 ports:
-- port: 9443
-  protocol: tcp
-  public: true
-  description: Portainer Web UI (HTTPS)
-- port: 8000
-  protocol: tcp
-  public: false
-  description: Edge Agent TCP tunnel
+  - port: 9443
+    protocol: tcp
+    public: true
+    description: Portainer Web UI (HTTPS)
+  - port: 8000
+    protocol: tcp
+    public: false
+    description: Edge Agent TCP tunnel
+
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain name for accessing Portainer (e.g., portainer.example.com).
+
+
 incompatible_with_apps: []

@@ -2,19 +2,51 @@ name: paperless-ai
 display_name: Paperless-AI
 description: AI-powered document analysis and auto-tagging companion for Paperless-ngx.
 categories:
-- productivity
-- ai
-app_version: 2.6.1
-recipe_version: 1.0.0
+  - productivity
+  - ai
+app_version: "2.6.1"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/clusterzx/paperless-ai
+
 app_min_ram_mb: 512
 app_min_disk_mb: 5120
+
 supported_os:
-- ubuntu-26.04
+  - ubuntu-26.04
+
 ports:
-- port: 3000
-  protocol: tcp
-  public: true
-  description: Paperless-AI Web UI
+  - port: 3000
+    protocol: tcp
+    public: true
+    description: Paperless-AI Web UI
+
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain for accessing Paperless-AI (e.g., paperless-ai.example.com).
+  - name: PAPERLESS_URL
+    display_name: Paperless-ngx URL
+    type: string
+    required: true
+    description: Full URL of your Paperless-ngx instance (e.g., http://paperless.example.com).
+  - name: PAPERLESS_API_TOKEN
+    display_name: Paperless API Token
+    type: password
+    required: true
+    description: API token from your Paperless-ngx instance (Settings → API Token).
+  - name: AI_PROVIDER
+    display_name: AI Provider
+    type: string
+    required: false
+    default: openai
+    description: AI provider to use (openai or ollama).
+  - name: OPENAI_API_KEY
+    display_name: OpenAI API Key
+    type: password
+    required: false
+    description: OpenAI API key (required if AI_PROVIDER=openai).
+
 incompatible_with_apps: []

@@ -2,18 +2,41 @@ name: vaultwarden
 display_name: Vaultwarden
 description: Lightweight Bitwarden-compatible password manager server.
 categories:
-- security
-app_version: 1.32.7
-recipe_version: 1.0.0
+  - security
+app_version: "1.32.7"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/dani-garcia/vaultwarden
+
 app_min_ram_mb: 256
 app_min_disk_mb: 5120
+
 supported_os:
-- ubuntu-26.04
+  - ubuntu-26.04
+
 ports:
-- port: 80
-  protocol: tcp
-  public: true
-  description: Vaultwarden Web UI
+  - port: 80
+    protocol: tcp
+    public: true
+    description: Vaultwarden Web UI
+
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain for accessing Vaultwarden (e.g., vault.example.com).
+  - name: ADMIN_TOKEN
+    display_name: Admin Token
+    type: password
+    required: false
+    auto_generate: true
+    description: Secret token for the /admin panel (auto-generated if not provided).
+  - name: SIGNUPS_ALLOWED
+    display_name: Allow Signups
+    type: boolean
+    required: false
+    default: true
+    description: Whether to allow new user registrations.
+
 incompatible_with_apps: []

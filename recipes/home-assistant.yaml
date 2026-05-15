@@ -2,25 +2,40 @@ name: home-assistant
 display_name: Home Assistant
 description: Open source home automation platform for local control and privacy.
 categories:
-- automation
-app_version: 2025.4.4
-recipe_version: 1.0.0
+  - automation
+app_version: "2025.4.4"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/home-assistant/core
+
 app_min_ram_mb: 1024
 app_min_disk_mb: 10240
+
 supported_os:
-- ubuntu-26.04
+  - ubuntu-26.04
+
 ports:
-- port: 8123
-  protocol: tcp
-  public: true
-  description: Home Assistant Web UI
-notes: 'Home Assistant runs in bridge network mode (port 8123 mapped).
+  - port: 8123
+    protocol: tcp
+    public: true
+    description: Home Assistant Web UI
 
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain for accessing Home Assistant (e.g., ha.example.com).
+  - name: TZ
+    display_name: Timezone
+    type: string
+    required: false
+    default: Europe/Berlin
+    description: Timezone for Home Assistant (e.g., Europe/Berlin).
+
+notes: |
+  Home Assistant runs in bridge network mode (port 8123 mapped).
   For full local device discovery (Bluetooth, USB, mDNS), host network mode
-
   is recommended but not suitable for cloud server deployments.
 
-  '
 incompatible_with_apps: []

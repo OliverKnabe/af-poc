@@ -2,31 +2,42 @@ name: adguard-home
 display_name: AdGuard Home
 description: Network-wide DNS ad-blocker and privacy protection server.
 categories:
-- security
-app_version: v0.107.63
-recipe_version: 1.0.0
+  - security
+app_version: "v0.107.63"
+recipe_version: "1.0.0"
 recipe_type: docker-compose
 upstream_url: https://github.com/AdguardTeam/AdGuardHome
+
 app_min_ram_mb: 256
 app_min_disk_mb: 2048
+
 supported_os:
-- ubuntu-26.04
+  - ubuntu-26.04
+
 ports:
-- port: 3000
-  protocol: tcp
-  public: true
-  description: AdGuard Home Setup UI
-- port: 80
-  protocol: tcp
-  public: true
-  description: AdGuard Home Web UI (after setup)
-- port: 53
-  protocol: tcp
-  public: false
-  description: DNS (TCP)
-- port: 53
-  protocol: udp
-  public: false
-  description: DNS (UDP)
+  - port: 3000
+    protocol: tcp
+    public: true
+    description: AdGuard Home Setup UI
+  - port: 80
+    protocol: tcp
+    public: true
+    description: AdGuard Home Web UI (after setup)
+  - port: 53
+    protocol: tcp
+    public: false
+    description: DNS (TCP)
+  - port: 53
+    protocol: udp
+    public: false
+    description: DNS (UDP)
+
+parameters:
+  - name: APP_DOMAIN
+    display_name: Domain
+    type: domain
+    required: true
+    description: Domain for accessing AdGuard Home (e.g., adguard.example.com).
+
 incompatible_with_apps:
-- pihole
+  - pihole

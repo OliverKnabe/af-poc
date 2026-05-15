@@ -28,14 +28,10 @@ def _inject_af_block(cloud_init_str, token):
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 def _autofill_params(applications, base_domain):
-    """Fetches af-api catalogue and auto-generates values for required parameters."""
-    try:
-        r = http.get(f"{AF_API_URL}/catalogue", timeout=3)
-        catalogue = {a["id"]: a for a in r.json().get("applications", [])}
-    except Exception:
-        catalogue = {}
+    """Uses local recipe definitions to auto-generate required parameter values."""
+    recipes = load_recipes()
     for app_item in applications:
-        recipe = catalogue.get(app_item["id"], {})
+        recipe = recipes.get(app_item["id"], {})
         params = app_item.setdefault("parameters", {})
         for p in recipe.get("parameters", []):
             pname = p["name"]
@@ -68,16 +64,20 @@ def load_recipes():
         recipes[r["id"]] = r
     return recipes
 
+def _strip_params(apps):
+    for a in apps:
+        a.pop("parameters", None)
+    return apps
+
 def normalise_catalogue(data):
     """Normalises real af-api response to match PoC frontend expectations."""
     for app in data.get("applications", []):
-        # Real API has 'name', not 'display_name'
         if "display_name" not in app:
             app["display_name"] = app.get("name", app.get("id", ""))
-        # Real API has resources.app_min_ram_mb (nested)
         if "app_min_ram_mb" not in app and "resources" in app:
             app["app_min_ram_mb"] = app["resources"].get("app_min_ram_mb", 0)
             app["app_min_disk_mb"] = app["resources"].get("app_min_disk_mb", 0)
+    _strip_params(data.get("applications", []))
     return data
 
 def catalogue_fallback():
@@ -86,6 +86,7 @@ def catalogue_fallback():
     for a in apps:
         if "display_name" not in a:
             a["display_name"] = a.get("name", a["id"])
+    _strip_params(apps)
     return {
         "os_baselines": OS_BASELINES_FALLBACK,
         "applications": apps,

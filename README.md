@@ -77,6 +77,27 @@ Cloudflare prints a public HTTPS URL (e.g. `https://some-random-name.trycloudfla
 4. **cloud-init Generation** — POST /api/compose returns a ready-to-use cloud-init YAML
 5. **Server Simulation** — animated terminal output simulating the bootstrap process
 
+## Installation Time Benchmarks
+
+Measured on a CUBE server (2 vCPU, 4 GB RAM) with `ubuntu-26.04-af` image, IONOS de/txl datacenter. Times are from "Deploy to Server" click to all application containers healthy.
+
+### End-to-end provisioning timeline
+
+| Phase | Duration |
+|---|---|
+| Server deletion + IONOS reprovisioning + first boot | ~2m 37s |
+| AF bootstrap → Docker pulls → containers started | ~2m 57s |
+| **Total (click → apps running)** | **~5m 34s** |
+
+### Per-application install times (Docker pull + start)
+
+| App | Containers | Install time |
+|---|---|---|
+| n8n 2.20.9 | n8n + PostgreSQL + Traefik | ~2m 52s |
+| Immich | server + ML + Redis + PostgreSQL | ~1m 10s |
+
+> Times include Docker image pulls on a fresh server (cold cache). Subsequent installs on a server that already has the images cached will be significantly faster.
+
 ## Related
 
 - [af-api](https://github.com/IONOS-Server-Technology/af-api) — Real AF API (FastAPI, JWE tokens, branch: feature/IF-547-api-implementation)

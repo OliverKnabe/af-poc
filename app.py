@@ -342,14 +342,18 @@ def reinstall():
         except StopIteration:
             return
 
-        # Get new server's DHCP IP
+        # Get new server's DHCP IP (retry — IP may not be assigned immediately after DONE)
         new_ip = ""
-        try:
-            nr = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{new_srv_id}/nics?depth=1", auth=auth)
-            new_ips = nr.json().get("items", [{}])[0].get("properties", {}).get("ips", [])
-            new_ip = new_ips[0] if new_ips else ""
-        except Exception:
-            pass
+        for _ in range(10):
+            time.sleep(5)
+            try:
+                nr = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{new_srv_id}/nics?depth=1", auth=auth)
+                new_ips = nr.json().get("items", [{}])[0].get("properties", {}).get("ips", [])
+                new_ip = new_ips[0] if new_ips else ""
+                if new_ip:
+                    break
+            except Exception:
+                pass
 
         # Update DuckDNS with new IP
         if DUCKDNS_TOKEN and DUCKDNS_DOMAIN and new_ip:

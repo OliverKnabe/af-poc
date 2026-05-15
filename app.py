@@ -169,8 +169,10 @@ def catalogue():
 @app.route("/api/compose", methods=["POST"])
 def compose():
     body = request.get_json(force=True)
+    base_domain = body.get("base_domain", "")
     body.setdefault("base_os", "ubuntu-26.04")
     body.setdefault("credentials", {"root_password": secrets.token_urlsafe(16)})
+    _autofill_params(body.get("applications", []), base_domain)
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

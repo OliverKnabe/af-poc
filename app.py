@@ -406,7 +406,7 @@ def reinstall():
                 yield f"data: error|DuckDNS error: {e}\n\n"
 
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
-        yield f"data: done|🎉 Reinstall complete! IP: {new_ip or '(check IONOS)'}\n\n"
+        yield f"data: done|🎉 Install complete! IP: {new_ip or '(check IONOS)'}\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

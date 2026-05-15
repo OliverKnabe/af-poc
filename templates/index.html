@@ -1395,13 +1395,13 @@
 
       const cloud_init = window._lastCompose?.cloud_init || "";
 
-      // Show the cloud-init config that will be applied
+      // Show the cloud-init config as a formatted block
       termWrap.appendChild(_makeTerminalLine("info", "─── cloud-init user-data ───────────────────────"));
       termWrap.appendChild(document.createTextNode("\n"));
-      cloud_init.split("\n").forEach(line => {
-        termWrap.appendChild(_makeTerminalLine("cmd", line));
-        termWrap.appendChild(document.createTextNode("\n"));
-      });
+      const ciBlock = document.createElement("pre");
+      ciBlock.style.cssText = "margin:4px 0 4px 0;white-space:pre-wrap;word-break:break-all;color:#93c5fd;font-size:11px;line-height:1.5;";
+      ciBlock.textContent = cloud_init;
+      termWrap.appendChild(ciBlock);
       termWrap.appendChild(_makeTerminalLine("info", "────────────────────────────────────────────────"));
       termWrap.appendChild(document.createTextNode("\n"));
 

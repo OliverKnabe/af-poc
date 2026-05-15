@@ -275,7 +275,7 @@ def reinstall():
     def generate():
         # 1. Read current NIC config to preserve the static IP
         yield "data: info|🔍 Reading server NIC config...\n\n"
-        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics", auth=auth)
+        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics?depth=1", auth=auth)
         nics = r.json().get("items", [])
         if not nics:
             yield "data: error|No NICs found on server\n\n"

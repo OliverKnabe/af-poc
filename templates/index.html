@@ -1053,7 +1053,7 @@
 
       const btn = document.getElementById("reinstall-btn");
       btn.disabled = state.selected.length === 0;
-      btn.onclick = openConfigModal;
+      btn.onclick = finishInstall;
     }
 
     // ---- Config Modal ----
@@ -1162,7 +1162,7 @@
 
     // ---- Compose flow ----
     async function finishInstall() {
-      const btn = document.getElementById("install-btn");
+      const btn = document.getElementById("reinstall-btn");
       btn.disabled = true;
       btn.textContent = "Composing…";
 
@@ -1185,19 +1185,19 @@
 
         if (!res.ok) {
           const err = await res.json();
-          showComposeError(err);
+          alert("Compose error: " + (err.message || JSON.stringify(err)));
           btn.disabled = false;
-          btn.textContent = "Install";
+          btn.textContent = "Reinstall Image";
           return;
         }
 
         const data = await res.json();
-        closeModal("config-modal");
         showComposeResult(data);
       } catch (e) {
-        showComposeError({ message: e.message });
+        alert("Error: " + e.message);
+        btn.disabled = false;
       } finally {
-        btn.textContent = "Install";
+        btn.textContent = "Reinstall Image";
       }
     }
 

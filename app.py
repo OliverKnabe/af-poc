@@ -238,6 +238,8 @@ IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
 IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
 IONOS_IMAGE_ID = os.environ.get("IONOS_IMAGE_ID", "")
 IONOS_RESERVED_IP = os.environ.get("IONOS_RESERVED_IP", "")
+DUCKDNS_TOKEN = os.environ.get("DUCKDNS_TOKEN", "")
+DUCKDNS_DOMAIN = os.environ.get("DUCKDNS_DOMAIN", "")
 
 def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
     """Polls server vmState until it matches target_state."""
@@ -326,8 +328,7 @@ def reinstall():
                 "nics": {"items": [{"properties": {
                     "name": "nic1",
                     "lan": nic_lan,
-                    "dhcp": not bool(IONOS_RESERVED_IP),
-                    **({"ips": [IONOS_RESERVED_IP]} if IONOS_RESERVED_IP else {})
+                    "dhcp": True
                 }}]}
             }
         }
@@ -335,13 +336,35 @@ def reinstall():
         if r.status_code not in (200, 201, 202):
             yield f"data: error|Create failed: {r.status_code} — {r.text[:200]}\n\n"
             return
+        new_srv_id = r.json().get("id", "")
         try:
             yield from _wait_request(auth, r.headers.get("Location",""), "Provisioning", interval=6, retries=60)
         except StopIteration:
             return
+
+        # Get new server's DHCP IP
+        new_ip = ""
+        try:
+            nr = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{new_srv_id}/nics?depth=1", auth=auth)
+            new_ips = nr.json().get("items", [{}])[0].get("properties", {}).get("ips", [])
+            new_ip = new_ips[0] if new_ips else ""
+        except Exception:
+            pass
+
+        # Update DuckDNS with new IP
+        if DUCKDNS_TOKEN and DUCKDNS_DOMAIN and new_ip:
+            yield f"data: info|🌐 Updating DuckDNS ({DUCKDNS_DOMAIN}) → {new_ip}...\n\n"
+            try:
+                dr = http.get(f"https://www.duckdns.org/update?domains={DUCKDNS_DOMAIN}&token={DUCKDNS_TOKEN}&ip={new_ip}", timeout=10)
+                if dr.text.strip() == "OK":
+                    yield f"data: ok|DuckDNS updated: {DUCKDNS_DOMAIN}.duckdns.org → {new_ip}\n\n"
+                else:
+                    yield f"data: error|DuckDNS update failed: {dr.text[:50]}\n\n"
+            except Exception as e:
+                yield f"data: error|DuckDNS error: {e}\n\n"
+
         yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
-        final_ip = IONOS_RESERVED_IP or (nic_ips[0] if nic_ips else "?")
-        yield f"data: done|🎉 Reinstall complete! IP: {final_ip}\n\n"
+        yield f"data: done|🎉 Reinstall complete! IP: {new_ip or '(check IONOS)'}\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

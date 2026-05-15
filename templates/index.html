@@ -248,6 +248,9 @@
       background: var(--ionos-surface);
       transition: all 0.15s ease;
       position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     .app-card:hover {
       border-color: var(--ionos-accent);
@@ -285,6 +288,11 @@
       color: var(--ionos-text-muted);
       line-height: 1.4;
       min-height: 32px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
     }
     .app-card-meta {
       font-size: 11px;

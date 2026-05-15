@@ -2,6 +2,7 @@ import os
 import glob
 import secrets
 import time
+import base64
 from flask import Flask, request, jsonify, render_template, Response
 import yaml
 import requests as http
@@ -209,6 +210,88 @@ def simulate_bootstrap():
         for level, msg in steps:
             yield f"data: {level}|{msg}\n\n"
             time.sleep(0.3 if level in ("cmd", "ok") else 0.6)
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+IONOS_API = "https://api.ionos.com/cloudapi/v6"
+IONOS_USERNAME = os.environ.get("IONOS_USERNAME", "")
+IONOS_PASSWORD = os.environ.get("IONOS_PASSWORD", "")
+IONOS_DATACENTER_ID = os.environ.get("IONOS_DATACENTER_ID", "")
+IONOS_SERVER_ID = os.environ.get("IONOS_SERVER_ID", "")
+IONOS_SERVER_TEMPLATE_ID = os.environ.get("IONOS_SERVER_TEMPLATE_ID", "")
+IONOS_SERVER_NAME = os.environ.get("IONOS_SERVER_NAME", "af-server")
+IONOS_IMAGE_ALIAS = os.environ.get("IONOS_IMAGE_ALIAS", "ubuntu:24.04")
+
+@app.route("/api/reinstall", methods=["POST"])
+def reinstall():
+    data = request.get_json(force=True)
+    cloud_init = data.get("cloud_init", "")
+    auth = (IONOS_USERNAME, IONOS_PASSWORD)
+
+    def generate():
+        # 1. Delete old server
+        yield "data: info|🗑️  Deleting existing server...\n\n"
+        r = http.delete(f"{IONOS_API}/datacenters/{IONOS_DATACENTER_ID}/servers/{IONOS_SERVER_ID}",
+                        auth=auth)
+        if r.status_code not in (202, 204):
+            yield f"data: error|Delete failed: {r.status_code} — {r.text[:120]}\n\n"
+            return
+        req_id = r.headers.get("Location", "").split("/requests/")[-1].rstrip("/status")
+        for _ in range(40):
+            time.sleep(3)
+            sr = http.get(f"{IONOS_API}/requests/{req_id}/status", auth=auth)
+            status = sr.json().get("metadata", {}).get("status", "UNKNOWN")
+            yield f"data: cmd|Waiting for deletion... ({status})\n\n"
+            if status == "DONE":
+                break
+            if status == "FAILED":
+                yield "data: error|Deletion failed\n\n"
+                return
+        yield "data: ok|Server deleted\n\n"
+
+        # 2. Create new server with cloud-init
+        yield "data: info|🚀 Creating new server with cloud-init...\n\n"
+        user_data = base64.b64encode(cloud_init.encode()).decode()
+        body = {
+            "properties": {
+                "name": IONOS_SERVER_NAME,
+                "type": "CUBE",
+                "templateUuid": IONOS_SERVER_TEMPLATE_ID,
+                "availabilityZone": "AUTO"
+            },
+            "entities": {
+                "volumes": {"items": [{"properties": {
+                    "name": "boot", "type": "DAS",
+                    "imageAlias": IONOS_IMAGE_ALIAS,
+                    "userData": user_data,
+                    "licenceType": "LINUX"
+                }}]},
+                "nics": {"items": [{"properties": {
+                    "name": "nic1", "lan": 1, "dhcp": True
+                }}]}
+            }
+        }
+        r = http.post(f"{IONOS_API}/datacenters/{IONOS_DATACENTER_ID}/servers",
+                      auth=auth, json=body)
+        if r.status_code not in (200, 201, 202):
+            yield f"data: error|Create failed: {r.status_code} — {r.text[:200]}\n\n"
+            return
+        req_id = r.headers.get("Location", "").split("/requests/")[-1].rstrip("/status")
+        new_id = r.json().get("id", "")[:8]
+        yield f"data: ok|Server created (id: {new_id}...)\n\n"
+        for _ in range(60):
+            time.sleep(5)
+            sr = http.get(f"{IONOS_API}/requests/{req_id}/status", auth=auth)
+            status = sr.json().get("metadata", {}).get("status", "UNKNOWN")
+            yield f"data: cmd|Provisioning... ({status})\n\n"
+            if status == "DONE":
+                break
+            if status == "FAILED":
+                yield "data: error|Provisioning failed\n\n"
+                return
+        yield "data: info|🌐 Server booting — cloud-init applying...\n\n"
+        yield "data: done|🎉 Reinstall complete!\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

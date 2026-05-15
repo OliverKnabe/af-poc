@@ -1237,7 +1237,7 @@
 
       footer.innerHTML = `
         <button class="btn btn-secondary" onclick="closeModal('result-modal')">Close</button>
-        <button class="btn btn-primary" style="width:auto;" onclick="startBootstrapSimulation()">Simulate Installation →</button>
+        <button class="btn btn-primary" style="width:auto;" onclick="startReinstall()">Install on Server →</button>
       `;
 
       // Store for simulation
@@ -1256,6 +1256,81 @@
         const btn = document.querySelector(".copy-btn");
         if (btn) { btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1500); }
       });
+    }
+
+    // ---- Real server reinstall ----
+    function _makeTerminalLine(level, msg) {
+      const el = document.createElement("span");
+      el.className = `terminal-line ${level}`;
+      el.textContent = msg;
+      return el;
+    }
+
+    async function startReinstall() {
+      const body = document.getElementById("result-modal-body");
+      const footer = document.getElementById("result-modal-footer");
+      document.getElementById("result-modal-title").textContent = "Installing on Server";
+
+      const termWrap = document.createElement("div");
+      termWrap.className = "terminal";
+      termWrap.id = "terminal";
+      body.replaceChildren(termWrap);
+
+      const runningBtn = document.createElement("button");
+      runningBtn.className = "btn btn-secondary";
+      runningBtn.disabled = true;
+      runningBtn.textContent = "Running…";
+      footer.replaceChildren(runningBtn);
+
+      const cloud_init = window._lastCompose?.cloud_init || "";
+
+      try {
+        const res = await fetch("/api/reinstall", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cloud_init })
+        });
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop();
+          for (const ev of events) {
+            const line = ev.replace(/^data: /, "");
+            if (!line) continue;
+            const [level, ...rest] = line.split("|");
+            const msg = rest.join("|");
+            termWrap.appendChild(_makeTerminalLine(level, msg));
+            termWrap.appendChild(document.createTextNode("\n"));
+            termWrap.scrollTop = termWrap.scrollHeight;
+            if (level === "done") {
+              const doneBtn = document.createElement("button");
+              doneBtn.className = "btn btn-primary";
+              doneBtn.textContent = "Done →";
+              doneBtn.onclick = () => showDeployedState();
+              footer.replaceChildren(doneBtn);
+            }
+            if (level === "error") {
+              const closeBtn = document.createElement("button");
+              closeBtn.className = "btn btn-secondary";
+              closeBtn.textContent = "Close";
+              closeBtn.onclick = () => closeModal("result-modal");
+              footer.replaceChildren(closeBtn);
+            }
+          }
+        }
+      } catch (e) {
+        termWrap.appendChild(_makeTerminalLine("error", e.message));
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "btn btn-secondary";
+        closeBtn.textContent = "Close";
+        closeBtn.onclick = () => closeModal("result-modal");
+        footer.replaceChildren(closeBtn);
+      }
     }
 
     // ---- Bootstrap simulation ----

@@ -13,6 +13,13 @@ services:
     environment:
       - AF_API_URL=http://af-api:8000/api/v1
       - AF_FRONTEND_URL=${AF_FRONTEND_URL:-https://frontendspace.duckdns.org}
+      - IONOS_USERNAME=${IONOS_USERNAME}
+      - IONOS_PASSWORD=${IONOS_PASSWORD}
+      - IONOS_DATACENTER_ID=${IONOS_DATACENTER_ID}
+      - IONOS_SERVER_ID=${IONOS_SERVER_ID}
+      - IONOS_SERVER_TEMPLATE_ID=${IONOS_SERVER_TEMPLATE_ID}
+      - IONOS_SERVER_NAME=${IONOS_SERVER_NAME}
+      - IONOS_IMAGE_ALIAS=${IONOS_IMAGE_ALIAS}
     depends_on:
       af-api:
         condition: service_healthy

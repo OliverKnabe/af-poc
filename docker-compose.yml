@@ -2,6 +2,8 @@ services:
   af-api:
     image: harbor.infra.cluster.ionos.com/imagefactory/af-api
     restart: unless-stopped
+    environment:
+      - DEV_MODE=true
     networks:
       - internal
 

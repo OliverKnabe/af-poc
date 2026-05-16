@@ -1,6 +1,6 @@
 services:
   af-api:
-    image: harbor.infra.cluster.ionos.com/imagefactory/af-api:build-20260516181646
+    image: harbor.infra.cluster.ionos.com/imagefactory/af-api:build-20260516183631
     restart: unless-stopped
     environment:
       - JWE_PRIVATE_KEY_FILE=/keys/jwe_private_key.pem

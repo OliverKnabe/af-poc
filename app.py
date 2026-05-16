@@ -111,7 +111,7 @@ def compose_fallback(data):
         for p in recipe.get("parameters", []):
             pname = p["name"]
             if pname in ("APP_DOMAIN", "app_domain") and not app_params.get(pname):
-                subdomain = app_id.replace("-", "")
+                subdomain = app_id
                 app_params[pname] = f"{subdomain}.{base_domain}"
             elif not app_params.get(pname) and p.get("auto_generate"):
                 app_params[pname] = secrets.token_urlsafe(24)
@@ -122,7 +122,7 @@ def compose_fallback(data):
 
         for port in recipe.get("ports", []):
             if port.get("public"):
-                subdomain = app_id.replace("-", "")
+                subdomain = app_id
                 http_routes.append({"application": app_id, "url": f"https://{subdomain}.{base_domain}"})
 
     root_pw = credentials.get("root_password", "CHANGE_ME")
@@ -184,7 +184,7 @@ def compose():
         for route in data.get("network", {}).get("http_routes", []):
             url = route.get("url", "")
             app_id = route.get("application", "")
-            subdomain = app_id.replace("-", "")
+            subdomain = app_id
             expected = f"{subdomain}.{base_domain}"
             if base_domain and subdomain and expected not in url:
                 scheme = "https://" if url.startswith("https") else "http://"

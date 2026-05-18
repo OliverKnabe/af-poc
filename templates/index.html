@@ -981,6 +981,10 @@
       "ubuntu-26.04": "Ubuntu 26.04 LTS", "debian-12": "Debian 12 Bookworm",
       "debian-13": "Debian 13 Trixie", "alma-9": "AlmaLinux 9", "rocky-9": "Rocky Linux 9"
     };
+    const OS_DESCRIPTIONS = {
+      "ubuntu-24.04": "General-purpose LTS release. Does not support n8n.",
+      "ubuntu-26.04": "Latest LTS release. Supports all apps including n8n.",
+    };
 
     function renderBaseOS() {
       const el = document.getElementById("baseos-container");
@@ -1001,6 +1005,14 @@
         const nameEl = document.createElement("div");
         nameEl.className = "app-card-name";
         nameEl.textContent = label;
+        const desc = OS_DESCRIPTIONS[id];
+        if (desc) {
+          const descEl = document.createElement("div");
+          descEl.className = "app-card-desc";
+          descEl.style.marginTop = "4px";
+          descEl.textContent = desc;
+          card.appendChild(descEl);
+        }
         const meta = document.createElement("div");
         meta.className = "app-card-meta";
         meta.style.marginTop = "8px";

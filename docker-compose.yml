@@ -27,6 +27,9 @@ services:
       - IONOS_RESERVED_IP=${IONOS_RESERVED_IP}
       - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
       - DUCKDNS_DOMAIN=${DUCKDNS_DOMAIN}
+      - DESEC_TOKEN=${DESEC_TOKEN}
+      - DYNU_API_KEY=${DYNU_API_KEY}
+      - DYNU_DOMAIN_ID=${DYNU_DOMAIN_ID}
       - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
     depends_on:
       af-api:

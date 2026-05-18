@@ -284,6 +284,9 @@ IONOS_IMAGE_ID = os.environ.get("IONOS_IMAGE_ID", "")
 IONOS_RESERVED_IP = os.environ.get("IONOS_RESERVED_IP", "")
 DUCKDNS_TOKEN = os.environ.get("DUCKDNS_TOKEN", "")
 DUCKDNS_DOMAIN = os.environ.get("DUCKDNS_DOMAIN", "")
+DESEC_TOKEN = os.environ.get("DESEC_TOKEN", "")
+DYNU_API_KEY = os.environ.get("DYNU_API_KEY", "")
+DYNU_DOMAIN_ID = os.environ.get("DYNU_DOMAIN_ID", "")
 SSH_PUBLIC_KEY = os.environ.get("SSH_PUBLIC_KEY", "")
 
 def _wait_vm_state(auth, dc, srv, target_state, label, interval=5, retries=30):
@@ -325,34 +328,32 @@ def reinstall():
         r = http.get(f"{IONOS_API}/datacenters/{dc}/servers?depth=1", auth=auth)
         servers = r.json().get("items", [])
         srv = next((s["id"] for s in servers if s.get("properties", {}).get("name") == IONOS_SERVER_NAME), None)
-        if not srv:
-            yield f"data: error|Server '{IONOS_SERVER_NAME}' not found in datacenter\n\n"
-            return
-        yield f"data: ok|Found server {srv[:8]}...\n\n"
+        nic_lan = 1
+        if srv:
+            yield f"data: ok|Found server {srv[:8]}...\n\n"
 
-        # 1. Read current NIC config to preserve the static IP
-        yield "data: info|🔍 Reading server NIC config...\n\n"
-        r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics?depth=1", auth=auth)
-        nics = r.json().get("items", [])
-        if not nics:
-            yield "data: error|No NICs found on server\n\n"
-            return
-        nic0 = nics[0]["properties"]
-        nic_ips = nic0.get("ips", [])
-        nic_lan = nic0.get("lan", 1)
-        yield f"data: ok|IP to preserve: {nic_ips}\n\n"
+            # 1. Read current NIC config
+            yield "data: info|🔍 Reading server NIC config...\n\n"
+            r = http.get(f"{IONOS_API}/datacenters/{dc}/servers/{srv}/nics?depth=1", auth=auth)
+            nics = r.json().get("items", [])
+            if nics:
+                nic0 = nics[0]["properties"]
+                nic_lan = nic0.get("lan", 1)
+                yield f"data: ok|NIC LAN: {nic_lan}\n\n"
 
-        # 2. Delete old server (keeps IP block, we'll reuse it)
-        yield "data: info|🗑️  Deleting existing server...\n\n"
-        r = http.delete(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
-        if r.status_code not in (202, 204):
-            yield f"data: error|Delete failed: {r.status_code} — {r.text[:120]}\n\n"
-            return
-        try:
-            yield from _wait_request(auth, r.headers.get("Location",""), "Deleting server", interval=5, retries=40)
-        except StopIteration:
-            return
-        yield "data: ok|Server deleted\n\n"
+            # 2. Delete old server
+            yield "data: info|🗑️  Deleting existing server...\n\n"
+            r = http.delete(f"{IONOS_API}/datacenters/{dc}/servers/{srv}", auth=auth)
+            if r.status_code not in (202, 204):
+                yield f"data: error|Delete failed: {r.status_code} — {r.text[:120]}\n\n"
+                return
+            try:
+                yield from _wait_request(auth, r.headers.get("Location",""), "Deleting server", interval=5, retries=40)
+            except StopIteration:
+                return
+            yield "data: ok|Server deleted\n\n"
+        else:
+            yield f"data: info|No existing server '{IONOS_SERVER_NAME}' — creating fresh\n\n"
 
         # 3. Create new server with same static IP + cloud-init
         yield "data: info|🚀 Creating new server with cloud-init...\n\n"
@@ -400,8 +401,43 @@ def reinstall():
             except Exception:
                 pass
 
-        # Update DuckDNS with new IP
-        if DUCKDNS_TOKEN and DUCKDNS_DOMAIN and new_ip:
+        # Update DNS with new IP (Dynu preferred, then desec.io, then DuckDNS)
+        if DYNU_API_KEY and DYNU_DOMAIN_ID and DEFAULT_BASE_DOMAIN and new_ip:
+            yield f"data: info|🌐 Updating Dynu ({DEFAULT_BASE_DOMAIN}) → {new_ip}...\n\n"
+            try:
+                dr = http.post(
+                    f"https://api.dynu.com/v2/dns/{DYNU_DOMAIN_ID}",
+                    headers={"API-Key": DYNU_API_KEY, "Content-Type": "application/json"},
+                    json={
+                        "name": DEFAULT_BASE_DOMAIN,
+                        "ipv4Address": new_ip,
+                        "ipv4": True,
+                        "ipv4WildcardAlias": True,
+                        "ttl": 120,
+                    },
+                    timeout=10,
+                )
+                if dr.status_code == 200:
+                    yield f"data: ok|Dynu updated: {DEFAULT_BASE_DOMAIN} → {new_ip}\n\n"
+                else:
+                    yield f"data: error|Dynu update failed: {dr.status_code} {dr.text[:80]}\n\n"
+            except Exception as e:
+                yield f"data: error|Dynu error: {e}\n\n"
+        elif DESEC_TOKEN and DEFAULT_BASE_DOMAIN and new_ip:
+            yield f"data: info|🌐 Updating desec.io ({DEFAULT_BASE_DOMAIN}) → {new_ip}...\n\n"
+            try:
+                dr = http.get(
+                    f"https://update.dedyn.io/?myipv4={new_ip}",
+                    auth=(DEFAULT_BASE_DOMAIN, DESEC_TOKEN),
+                    timeout=10,
+                )
+                if dr.status_code == 200 and "good" in dr.text.lower():
+                    yield f"data: ok|desec.io updated: {DEFAULT_BASE_DOMAIN} → {new_ip}\n\n"
+                else:
+                    yield f"data: error|desec.io update failed: {dr.status_code} {dr.text[:80]}\n\n"
+            except Exception as e:
+                yield f"data: error|desec.io error: {e}\n\n"
+        elif DUCKDNS_TOKEN and DUCKDNS_DOMAIN and new_ip:
             yield f"data: info|🌐 Updating DuckDNS ({DUCKDNS_DOMAIN}) → {new_ip}...\n\n"
             try:
                 dr = http.get(f"https://www.duckdns.org/update?domains={DUCKDNS_DOMAIN}&token={DUCKDNS_TOKEN}&ip={new_ip}", timeout=10)

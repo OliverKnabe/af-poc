@@ -979,20 +979,19 @@
     const OS_LABELS = {
       "ubuntu-22.04": "Ubuntu 22.04 LTS", "ubuntu-24.04": "Ubuntu 24.04 LTS",
       "ubuntu-26.04": "Ubuntu 26.04 LTS", "debian-12": "Debian 12 Bookworm",
-      "debian-13": "Debian 13 Trixie", "alma-9": "AlmaLinux 9", "rocky-9": "Rocky Linux 9"
+      "debian-13": "Debian 13 Trixie", "alma-9": "AlmaLinux 9", "rocky-9": "Rocky Linux 9",
+      "ubuntu-24.04-n8n": "Ubuntu 24.04 + n8n", "ubuntu-26.04-n8n": "Ubuntu 26.04 + n8n",
     };
-    const OS_DESCRIPTIONS = {
-      "ubuntu-24.04": "General-purpose LTS release. Does not support n8n.",
-      "ubuntu-26.04": "Latest LTS release. Supports all apps including n8n.",
-    };
+    const EXTRA_OS_IDS = ["ubuntu-24.04-n8n", "ubuntu-26.04-n8n"];
 
     function renderBaseOS() {
       const el = document.getElementById("baseos-container");
-      if (!BASE_OS_IDS.length) { el.replaceChildren(); return; }
+      const allIds = [...BASE_OS_IDS, ...EXTRA_OS_IDS];
+      if (!allIds.length) { el.replaceChildren(); return; }
       const grid = document.createElement("div");
       grid.className = "apps-grid";
       grid.style.marginTop = "16px";
-      BASE_OS_IDS.forEach(id => {
+      allIds.forEach(id => {
         const label = OS_LABELS[id] || id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
         const family = id.split("-")[0];
         const icon = OS_ICONS[family] || OS_ICONS.default;
@@ -1005,14 +1004,6 @@
         const nameEl = document.createElement("div");
         nameEl.className = "app-card-name";
         nameEl.textContent = label;
-        const desc = OS_DESCRIPTIONS[id];
-        if (desc) {
-          const descEl = document.createElement("div");
-          descEl.className = "app-card-desc";
-          descEl.style.marginTop = "4px";
-          descEl.textContent = desc;
-          card.appendChild(descEl);
-        }
         const meta = document.createElement("div");
         meta.className = "app-card-meta";
         meta.style.marginTop = "8px";

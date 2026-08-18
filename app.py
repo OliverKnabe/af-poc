@@ -39,6 +39,11 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     existing_token = (data.get("application_factory") or {}).get("token", fallback_token)
     af_block = {
         "token": existing_token,
+        # af-cloud-init renamed api_url -> bootstrap_url (9aa8e78, IF-942/IF-1097) and reads it as a
+        # hard subscript af_cfg["bootstrap_url"], so a missing key is a KeyError before any HTTP call.
+        # It POSTs to this URL verbatim (url = bootstrap_url.rstrip("/")) and appends no path, so this
+        # must be the full endpoint - which is also the one path Caddy exempts from basic auth.
+        "bootstrap_url": AF_FRONTEND_URL.rstrip("/") + "/api/v1/bootstrap",
         "api_url": AF_FRONTEND_URL,
         "retry_attempts": 3,
         "retry_backoff_seconds": 1,

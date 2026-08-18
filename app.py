@@ -78,6 +78,12 @@ def normalise_catalogue(data):
             app["app_min_ram_mb"] = app["resources"].get("app_min_ram_mb", 0)
             app["app_min_disk_mb"] = app["resources"].get("app_min_disk_mb", 0)
     _strip_params(data.get("applications", []))
+    # af-api dropped its per-OS baseline table (OS_BASELINES_FILE removed) and now returns a
+    # single flat "os_baseline". The UI still looks baselines up by OS id, so fan the one
+    # baseline out across the OS list rather than handing it an undefined map.
+    if "os_baselines" not in data:
+        baseline = data.get("os_baseline") or OS_BASELINES_FALLBACK["ubuntu-24.04"]
+        data["os_baselines"] = {os_id: baseline for os_id in BASE_OS_LIST.split(",")}
     return data
 
 def catalogue_fallback():

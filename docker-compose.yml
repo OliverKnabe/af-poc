@@ -33,6 +33,9 @@ services:
       - DYNU_API_KEY=${DYNU_API_KEY}
       - DYNU_DOMAIN_ID=${DYNU_DOMAIN_ID}
       - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
+      - BOOTSTRAP_VERIFICATION_KEY_FILE=/keys/bootstrap_signing_key.pub
+    volumes:
+      - ./bootstrap_signing_key.pub:/keys/bootstrap_signing_key.pub:ro
     depends_on:
       af-api:
         condition: service_healthy

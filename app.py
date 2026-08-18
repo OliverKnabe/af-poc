@@ -15,6 +15,19 @@ AF_FRONTEND_URL = os.environ.get("AF_FRONTEND_URL", "https://frontendspace.duckd
 DEFAULT_BASE_DOMAIN = os.environ.get("DEFAULT_BASE_DOMAIN", "")
 # Comma-separated list of base OS IDs available in the Image Factory
 BASE_OS_LIST = os.environ.get("BASE_OS_LIST", "ubuntu-22.04,ubuntu-24.04,ubuntu-26.04,debian-12,debian-13,alma-9,rocky-9")
+# Public half of af-api's Ed25519 bootstrap signing key, handed to the VM so it can verify
+# the install archive. Only honoured on a dev-mode image — see _inject_af_block.
+BOOTSTRAP_VERIFICATION_KEY_FILE = os.environ.get("BOOTSTRAP_VERIFICATION_KEY_FILE", "")
+
+def _read_verification_key():
+    """PEM public key af-api signs bootstrap archives with, or "" when not configured."""
+    if not BOOTSTRAP_VERIFICATION_KEY_FILE:
+        return ""
+    try:
+        with open(BOOTSTRAP_VERIFICATION_KEY_FILE) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
 
 def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     """Updates application_factory block: sets api_url, preserves existing token, adds app domains."""
@@ -30,6 +43,15 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
         "retry_attempts": 3,
         "retry_backoff_seconds": 1,
     }
+    # This PoC's af-api signs archives with its own key, which is not one of the two cluster
+    # keys baked into the image. af-cloud-init only trusts a user-data key in dev mode, and dev
+    # mode is a DUAL GATE: this flag AND /etc/app-factory/.dev-mode-enabled baked at image build
+    # time (dev_mode_image input on if-main-ubuntu-2604-af). On a production image the flag is
+    # logged as a warning and ignored, so verification falls back to the baked keys and fails.
+    verification_key = _read_verification_key()
+    if verification_key:
+        af_block["dev_mode"] = True
+        af_block["bootstrap_verification_key"] = verification_key
     if http_routes:
         af_block["applications"] = [
             {"id": r["application"], "domain": r["url"].replace("https://", "").replace("http://", "")}
@@ -243,7 +265,21 @@ def bootstrap():
         r = http.post(f"{AF_API_URL}/bootstrap", json=body, timeout=30)
         _bootstrap_events.append({"ts": time.time(), "ip": client_ip, "status": r.status_code})
         _bootstrap_events = _bootstrap_events[-20:]
-        return Response(r.content, status=r.status_code, content_type="application/json")
+        # af-cloud-init verifies the archive's Ed25519 signature from X-Bootstrap-Signature
+        # BEFORE untarring it, and a missing header is fatal with no retry — so the signature
+        # headers and the real content type have to survive this proxy hop.
+        forwarded = {
+            k: v
+            for k, v in r.headers.items()
+            if k.lower()
+            in ("x-bootstrap-signature", "x-bootstrap-signature-alg", "content-disposition")
+        }
+        return Response(
+            r.content,
+            status=r.status_code,
+            content_type=r.headers.get("Content-Type", "application/json"),
+            headers=forwarded,
+        )
     except Exception as e:
         _bootstrap_events.append({"ts": time.time(), "ip": client_ip, "status": "error"})
         return jsonify({"error": str(e)}), 502

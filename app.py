@@ -86,6 +86,35 @@ def normalise_catalogue(data):
         data["os_baselines"] = {os_id: baseline for os_id in BASE_OS_LIST.split(",")}
     return data
 
+def normalise_compose(data):
+    """Maps the current af-api compose response onto the shape the PoC frontend reads.
+
+    af-api replaced the top-level ``token`` field and the ``network.http_routes`` list with a
+    ``composition`` object, and dropped app ``parameters`` from the API altogether. The UI still
+    reads the old shape (guarded with ``|| []``, so it silently showed no URLs), so rebuild it
+    here from ``composition``.
+    """
+    comp = data.get("composition") or {}
+    if "network" not in data:
+        data["network"] = {
+            "traefik_enabled": True,
+            "http_routes": [
+                {"application": a.get("id"), "url": a["url"]}
+                for a in comp.get("applications", [])
+                if a.get("url")
+            ],
+            "direct_ports": [],
+        }
+    if not data.get("token"):
+        body = "\n".join(
+            l for l in (data.get("cloud_init") or "").splitlines() if not l.startswith("#cloud-config")
+        )
+        try:
+            data["token"] = ((yaml.safe_load(body) or {}).get("application_factory") or {}).get("token", "")
+        except Exception:
+            data["token"] = ""
+    return data
+
 def catalogue_fallback():
     recipes = load_recipes()
     apps = list(recipes.values())
@@ -187,7 +216,7 @@ def compose():
     body["root_credentials"] = creds
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
-        data = r.json()
+        data = normalise_compose(r.json())
         base_domain = body.get("base_domain", "")
         for route in data.get("network", {}).get("http_routes", []):
             url = route.get("url", "")

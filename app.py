@@ -97,7 +97,7 @@ def compose_fallback(data):
     recipes = load_recipes()
     selected = data.get("applications", [])
     base_domain = data.get("base_domain", "example.stratoserver.net")
-    credentials = data.get("credentials", {})
+    credentials = data.get("root_credentials") or data.get("credentials") or {}
 
     resolved = {}
     http_routes = []
@@ -174,9 +174,11 @@ def catalogue():
 def compose():
     body = request.get_json(force=True)
     body.setdefault("base_os", "ubuntu-26.04")
-    creds = body.setdefault("credentials", {})
+    # af-api renamed this field in IF-944 (2026-06-03); the UI still posts "credentials".
+    creds = body.pop("credentials", None) or body.get("root_credentials") or {}
     if not creds.get("root_password"):
         creds["root_password"] = secrets.token_urlsafe(16)
+    body["root_credentials"] = creds
     try:
         r = http.post(f"{AF_API_URL}/compose", json=body, timeout=10)
         data = r.json()

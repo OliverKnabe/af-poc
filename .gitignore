@@ -6,3 +6,5 @@ venv/
 *.egg-info/
 dist/
 jwe_private_key.pem
+bootstrap_signing_key.pem
+bootstrap_signing_key.pub

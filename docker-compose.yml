@@ -1,11 +1,13 @@
 services:
   af-api:
-    image: harbor.infra.cluster.ionos.com/imagefactory/af-api:build-20260516195031
+    image: harbor.infra.cluster.ionos.com/imagefactory/af-api:if1449-san
     restart: unless-stopped
     environment:
       - JWE_PRIVATE_KEY_FILE=/keys/jwe_private_key.pem
+      - BOOTSTRAP_SIGNING_KEY_FILE=/keys/bootstrap_signing_key.pem
     volumes:
       - ./jwe_private_key.pem:/keys/jwe_private_key.pem:ro
+      - ./bootstrap_signing_key.pem:/keys/bootstrap_signing_key.pem:ro
     networks:
       - internal
 

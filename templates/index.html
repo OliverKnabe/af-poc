@@ -843,6 +843,12 @@
             style="font-size:11px;padding:6px 10px;font-family:monospace;resize:vertical;"
             oninput="state.customSshKey=this.value"></textarea>
         </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="cred-staging-le" onchange="state.useStagingLe=this.checked">
+            <span>Let's Encrypt <strong>staging</strong> CA &mdash; browsers will not trust the cert, but issuance costs no production rate-limit quota</span>
+          </label>
+        </div>
       </div>
 
       <div style="margin-top: 20px;">
@@ -891,7 +897,8 @@
       useForAll: { email: "", password: "" },
       rootPassword: "",
       customSshKey: "",
-      useAdminKey: {{ 'true' if admin_ssh_key else 'false' }}
+      useAdminKey: {{ 'true' if admin_ssh_key else 'false' }},
+      useStagingLe: false
     };
 
     let CATEGORY_FILTERS = [{ id: "all", label: "All" }];
@@ -1258,6 +1265,7 @@
       const payload = {
         base_domain: state.baseDomain,
         base_os: "ubuntu-26.04",
+        use_staging_le: state.useStagingLe,
         credentials: {
           root_password: state.rootPassword || undefined,
           ssh_public_key: [

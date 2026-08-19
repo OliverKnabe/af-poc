@@ -65,16 +65,17 @@ def _inject_af_block(cloud_init_str, fallback_token="", http_routes=None):
     data["application_factory"] = af_block
     if SSH_PUBLIC_KEY and "ssh_authorized_keys" not in data:
         data["ssh_authorized_keys"] = [SSH_PUBLIC_KEY]
-    # Extend (not replace) cloud_final_modules so application_factory is appended
-    # to whatever the system/vendor config provides, regardless of cloud.cfg.d order.
-    data.setdefault("merge_how", [
-        {"name": "list", "settings": ["extend"]},
-        {"name": "dict", "settings": ["no_replace", "recurse_list"]},
-        {"name": "str", "settings": ["append"]},
-    ])
-    data.setdefault("cloud_final_modules", ["application_factory"])
-    if "application_factory" not in data["cloud_final_modules"]:
-        data["cloud_final_modules"].append("application_factory")
+    # Do NOT add application_factory to cloud_final_modules. Since IF-874 the image ships
+    # af-bootstrap.service, which runs the module itself via `cloud-init single` once
+    # cloud-final has finished -- and cc_application_factory's own docstring names that as
+    # the intended trigger, "NOT via cloud_final_modules". Declaring it here too made the
+    # module run TWICE. The second pass re-extracts the install archive, restoring the
+    # shipped .env with its secrets blank, so af_gen_secret mints a fresh
+    # N8N_ENCRYPTION_KEY despite being written to be idempotent -- its guard reads the very
+    # .env that was just overwritten. n8n has already persisted the first key in
+    # /opt/n8n/n8n/config by then, so it dies on "Mismatching encryption keys" and
+    # crash-loops forever. af-api never emitted cloud_final_modules, so this was PoC-only:
+    # a leftover from before af-bootstrap.service existed.
     return "#cloud-config\n" + yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 OS_BASELINES_FALLBACK = {
